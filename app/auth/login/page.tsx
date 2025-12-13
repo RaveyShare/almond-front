@@ -1,6 +1,6 @@
 import { Brain } from "lucide-react"
 import Link from "next/link"
-import LoginForm from "@/components/auth/login-form"
+import LoginWechat from "@/components/auth/login-wechat"
 import AuthGuard from "@/components/auth/auth-guard"
 
 // Force dynamic rendering
@@ -21,11 +21,11 @@ export default function LoginPage() {
           {/* Logo */}
           <Link className="mb-8 flex items-center space-x-2 font-bold" href="/">
             <Brain className="h-8 w-8 text-cyan-400" />
-            <span className="text-xl">小杏仁记忆搭子</span>
+            <span className="text-xl">小杏仁</span>
           </Link>
 
-          {/* Login Form */}
-          <LoginForm />
+          {/* Login - WeChat Only */}
+          <LoginWechat />
         </div>
       </div>
     </AuthGuard>

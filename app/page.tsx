@@ -291,6 +291,9 @@ export default function Home() {
                   />
                   <span className="text-sm text-white/70">欢迎, {currentUser.name}</span>
                 </div>
+                <Link className="text-sm hover:text-cyan-400" href="/about">
+                  关于
+                </Link>
                 <Link className="text-sm hover:text-cyan-400" href="/plans">
                   计划
                 </Link>
@@ -311,6 +314,9 @@ export default function Home() {
               </>
             ) : (
               <>
+                <Link className="text-sm hover:text-cyan-400" href="/about">
+                  关于
+                </Link>
                 <Link className="text-sm hover:text-cyan-400" href="/auth/login">
                   登录
                 </Link>

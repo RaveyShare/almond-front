@@ -185,6 +185,13 @@ export default function LoginForm() {
   const startPolling = (state: string) => {
     const interval = setInterval(async () => {
       try {
+        // 若已登录则停止轮询
+        const { authManager } = await import('@/lib/auth')
+        if (authManager.isAuthenticated()) {
+          clearInterval(interval)
+          setPollingInterval(null)
+          return
+        }
         // 检查localStorage中是否有登录成功的标记
         const loginSuccess = localStorage.getItem(`wechat_login_${state}`)
         if (loginSuccess) {
@@ -245,6 +252,12 @@ export default function LoginForm() {
       // 轮询二维码状态
       const interval = setInterval(async () => {
         try {
+          const { authManager } = await import('@/lib/auth')
+          if (authManager.isAuthenticated()) {
+            clearInterval(interval)
+            setPollingInterval(null)
+            return
+          }
           const res = await api.frontAuth.checkQr(qrcodeId)
           if (res.status === 2 && res.token) {
             if (pollingInterval) { clearInterval(pollingInterval); setPollingInterval(null) }
@@ -292,12 +305,7 @@ export default function LoginForm() {
     }
   }
 
-  const startedRef = useRef(false)
-  useEffect(() => {
-    if (startedRef.current) return
-    startedRef.current = true
-    handleWechatLogin()
-  }, [])
+  // 移除自动开始微信轮询，改为手动触发
 
   // 关闭二维码对话框
   const handleCloseQrCode = () => {
@@ -410,8 +418,8 @@ export default function LoginForm() {
             </div>
             
             {isClient && (
-              <div className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10 px-4 py-3 rounded-md">
-                <div className="flex items-center mb-3">
+              <div className="w-full border-white/10 bg白/5 text白 hover:bg白/10 px-4 py-3 rounded-md">
+                <div className="flex items中心 mb-3">
                   <QrCode className="mr-2 h-4 w-4" />
                   <span>使用微信扫码即可登录</span>
                   {isWechatLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
@@ -426,9 +434,18 @@ export default function LoginForm() {
                       />
                     </div>
                   ) : (
-                    <span className="text-white/60 text-sm">正在生成小程序码...</span>
+                    <span className="text白/60 text-sm">正在生成小程序码...</span>
                   )}
-                  <span className="text-white/70 text-xs">请用微信扫描上方小程序码完成登录</span>
+                  <span className="text白/70 text-xs">请用微信扫描上方小程序码完成登录</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-2 border-white/20 text-white hover:bg白/10"
+                    onClick={() => handleWechatLogin(true)}
+                    disabled={isWechatLoading}
+                  >
+                    刷新二维码
+                  </Button>
                 </div>
               </div>
             )}
