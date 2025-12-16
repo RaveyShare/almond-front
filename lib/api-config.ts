@@ -280,7 +280,7 @@ export const api = {
     const payload = {
       title: item.content?.slice(0, 50) || '未命名',
       content: item.content,
-      tags: Array.isArray(item.memory_aids?.mnemonics) ? item.memory_aids!.mnemonics.map(m => m.title).join(',') : '',
+      tags: Array.isArray(item.memory_aids?.mnemonics) ? item.memory_aids!.mnemonics.map(m => m.title) : [],
       category: 'general',
       itemType: 'text',
       difficulty: 'medium',
@@ -296,20 +296,22 @@ export const api = {
       body: JSON.stringify(payload),
     }, 8000)
     const res = await handleResponse<{ code: number; data: any }>(response)
-    const dto = unwrapHttpResult(res)
+    const id = unwrapHttpResult(res)
+    
+    // 返回临时构建的对象，ID使用后端返回的
     return {
-      id: String(dto.id),
-      user_id: String(dto.userId) as any,
-      created_at: dto.createTime ? new Date(dto.createTime).toISOString() : new Date().toISOString(),
-      title: dto.title || '',
-      content: dto.content || '',
-      tags: typeof dto.tags === 'string' ? dto.tags.split(',').filter(Boolean) : Array.isArray(dto.tags) ? dto.tags : [],
-      category: dto.category || 'general',
-      difficulty: (dto.difficulty || 'medium'),
-      mastery: Number(dto.mastery ?? 0),
-      reviewCount: Number(dto.reviewCount ?? 0),
-      starred: dto.starred === 1 || dto.starred === true,
-      next_review_date: dto.nextReviewDate ? new Date(dto.nextReviewDate).toISOString() : null,
+      id: String(id),
+      user_id: '' as any,
+      created_at: new Date().toISOString(),
+      title: payload.title,
+      content: payload.content || '',
+      tags: typeof payload.tags === 'string' ? [] : payload.tags,
+      category: payload.category,
+      difficulty: payload.difficulty as 'medium',
+      mastery: 0,
+      reviewCount: 0,
+      starred: false,
+      next_review_date: null,
       type: 'memory',
       status: 'new'
     }
@@ -439,17 +441,36 @@ export const api = {
   },
 
   createTask: async (title: string): Promise<TaskItem> => {
-     // Placeholder
-     return Promise.resolve({
-       id: Date.now().toString(),
-       user_id: '00000000-0000-0000-0000-000000000000' as any,
-       title: title,
-       content: '',
-       tags: [],
-       type: 'task',
-       status: 'todo',
-       created_at: new Date().toISOString()
-     })
+    const token = authManager.getToken()
+    if (!token) throw new Error("Not authenticated")
+
+    const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/front/tasks/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        title: title,
+        status: 'todo',
+        priority: 0,
+        level: 'inbox'
+      }),
+    }, 8000)
+    
+    const res = await handleResponse<{ code: number; data: number }>(response)
+    const id = unwrapHttpResult(res)
+
+    return {
+      id: String(id),
+      user_id: '' as any, // 暂不返回userId
+      title: title,
+      content: '',
+      tags: [],
+      type: 'task',
+      status: 'todo',
+      created_at: new Date().toISOString()
+    }
   },
 
   // Reviews endpoints

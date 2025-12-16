@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { api } from "@/lib/api-config"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { authManager } from "@/lib/auth"
 import MindMap from "@/components/mind-map"
 import MemoryMnemonic from "@/components/memory-mnemonic"
@@ -51,7 +51,7 @@ export default function Home() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
 
   const router = useRouter()
-  const { toast } = useToast()
+
 
   useEffect(() => {
     setIsAuthenticated(authManager.isAuthenticated())
@@ -81,16 +81,12 @@ export default function Home() {
       const errorMessage = error instanceof Error ? error.message : ''
       
       if (errorMessage.includes('超时') || errorMessage.includes('timeout')) {
-        toast({
-          title: "网络连接较慢",
+        toast("网络连接较慢", {
           description: "正在努力为您加载最近的记忆内容，请稍等片刻...",
-          open: true
         })
       } else {
-        toast({
-          title: "内容加载中",
+        toast("内容加载中", {
           description: "记忆内容正在加载，请稍后刷新页面查看",
-          open: true
         })
       }
     } finally {
@@ -112,10 +108,8 @@ export default function Home() {
         // Task creation logic
         await api.createTask(contentToSave)
         setIsLoading(false)
-        toast({
-          title: "任务创建成功",
+        toast("任务创建成功", {
           description: "已添加到待办列表。",
-          open: true
         })
       } else {
         // Memory creation logic
@@ -124,10 +118,8 @@ export default function Home() {
         // 步骤 2: 使用新项目乐观地更新UI。
         setMemoryItems((prev) => [savedItem, ...prev.slice(0, 4)])
         setIsLoading(false) // 停止主要的加载动画。
-        toast({
-          title: "保存成功",
+        toast("保存成功", {
           description: "已添加到记忆库。AI 正在后台生成辅助工具...",
-          open: true
         })
 
         // 步骤 3: 在后台生成辅助工具。“即发即忘”。
@@ -146,10 +138,8 @@ export default function Home() {
             // 使用完整数据（包括辅助工具）更新列表中的特定项目
             setMemoryItems(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item))
     
-            toast({
-              title: "AI 辅助已生成",
+            toast("AI 辅助已生成", {
               description: `"${savedItem.content.substring(0, 20)}..."的记忆辅助工具已就绪。`,
-              open: true
             })
           } catch (error) {
             console.error("Error generating memory aids in background:", error)
@@ -157,16 +147,12 @@ export default function Home() {
             
             // 根据错误类型显示不同的友好提示
             if (errorMessage.includes('超时') || errorMessage.includes('timeout')) {
-              toast({
-                title: "正在生成记忆辅助",
+              toast("正在生成记忆辅助", {
                 description: "AI 正在为您生成记忆内容，由于内容较复杂需要更多时间，请稍后回来查看完整内容。",
-                open: true
               })
             } else {
-              toast({
-                title: "记忆辅助生成中",
+              toast("记忆辅助生成中", {
                 description: "AI 正在后台为您生成记忆辅助工具，请稍后刷新页面查看完整内容。",
-                open: true
               })
             }
           }
@@ -178,11 +164,8 @@ export default function Home() {
       setIsLoading(false)
       const errorMessage = error instanceof Error ? error.message : ''
       
-      toast({
-        title: "保存失败",
+      toast("保存失败", {
         description: errorMessage || "请稍后重试",
-        variant: "destructive",
-        open: true
       })
     }
   }
@@ -192,10 +175,8 @@ export default function Home() {
       router.push(`/memory-item/${item.id}`)
     } else {
       // TODO: Task detail or edit dialog
-      toast({
-         title: "任务详情",
+      toast("任务详情", {
          description: "任务详情功能开发中...",
-         open: true
       })
     }
   }
@@ -203,10 +184,8 @@ export default function Home() {
   const handleLogout = async () => {
     try {
       await api.auth.logout()
-      toast({
-        title: "已退出登录",
+      toast("已退出登录", {
         description: "感谢使用小杏仁记忆搭子",
-        open: true,
       })
     } catch (error) {
       console.error("Logout error:", error)
