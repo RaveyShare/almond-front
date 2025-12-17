@@ -208,6 +208,57 @@ export const api = {
     },
   },
 
+  user: {
+    getCurrentUser: async (): Promise<any> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error("Not authenticated")
+      
+      const response = await fetchWithTimeout(`/front/users/me`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }, 8000)
+      const res = await handleResponse<{ code: number; data: any }>(response)
+      return unwrapHttpResult(res)
+    },
+
+    updateProfile: async (data: { nickname: string; avatarUrl: string }): Promise<any> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error("Not authenticated")
+      
+      const response = await fetchWithTimeout(`/front/users/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      }, 8000)
+      const res = await handleResponse<{ code: number; data: any }>(response)
+      return unwrapHttpResult(res)
+    },
+    
+    uploadAvatar: async (file: File): Promise<string> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error("Not authenticated")
+      
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const response = await fetchWithTimeout(`/front/users/avatar/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }, 30000)
+      const res = await handleResponse<{ code: number; data: string }>(response)
+      return unwrapHttpResult(res)
+    }
+  },
+
   // Memory items endpoints
   getMemoryItems: async (params?: { keyword?: string; category?: string; page?: number; size?: number }): Promise<UnifiedItem[]> => {
     const token = authManager.getToken()

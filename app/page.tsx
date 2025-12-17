@@ -262,14 +262,14 @@ export default function Home() {
           <div className="flex items-center space-x-4">
             {isAuthenticated && currentUser ? (
               <>
-                <div className="flex items-center space-x-2">
+                <Link href="/profile" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
                   <img
                     src={currentUser.avatar || "/placeholder.svg"}
                     alt={currentUser.name}
-                    className="h-6 w-6 rounded-full"
+                    className="h-6 w-6 rounded-full object-cover"
                   />
                   <span className="text-sm text-white/70">欢迎, {currentUser.name}</span>
-                </div>
+                </Link>
                 <Link className="text-sm hover:text-cyan-400" href="/about">
                   关于
                 </Link>

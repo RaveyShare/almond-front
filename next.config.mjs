@@ -13,7 +13,20 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    return []
+    return [
+      {
+        source: '/front/auth/:path*',
+        destination: 'https://user-center.ravey.site/front/auth/:path*',
+      },
+      {
+        source: '/front/users/:path*',
+        destination: 'https://user-center.ravey.site/front/users/:path*',
+      },
+      {
+        source: '/front/:path*',
+        destination: 'https://almond.ravey.site/front/:path*',
+      },
+    ]
   },
 }
 
