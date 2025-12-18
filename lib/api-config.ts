@@ -9,17 +9,9 @@ import { authManager, type AuthResponse, type LoginCredentials, type RegisterCre
 import type { MemoryItem, MemoryItemCreate, MemoryAids, ReviewSchedule, ReviewCompletionRequest, TaskItem, UnifiedItem } from "./types"
 import { jwtDecode } from "jwt-decode";
 
-// API Base URL 改为统一走 Almond 后端（Java）
-const API_BASE_URL = (
-  (process.env.NEXT_PUBLIC_ALMOND_BACK_URL ? `${process.env.NEXT_PUBLIC_ALMOND_BACK_URL.replace(/\/$/, '')}/api` : undefined)
-  || "http://localhost:8000/api"
-).replace(/\/$/, '')
-
-// Almond-Back(Java) Base URL，默认本地 8083，可通过 NEXT_PUBLIC_ALMOND_BACK_URL 配置
+// Almond-Back(Java) Base URL
 const ALMOND_BACK_BASE_URL = (
-  process.env.NEXT_PUBLIC_ALMOND_BACK_URL ||
-  (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/(api|$)/, '') : undefined) ||
-  "https://almond.ravey.site"
+  process.env.NEXT_PUBLIC_ALMOND_BACK_URL || "http://localhost:8082"
 ).replace(/\/$/, '')
 
 // Java Front-Auth Base Path 走同源代理以避免跨域
@@ -29,7 +21,7 @@ const FRONT_AUTH_BASE_URL = ''
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -100,7 +92,7 @@ export const api = {
   // Authentication endpoints
   auth: {
     login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
+      const response = await fetchWithTimeout(`/front/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
@@ -123,7 +115,7 @@ export const api = {
     },
 
     register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/auth/register`, {
+      const response = await fetchWithTimeout(`/front/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -133,7 +125,7 @@ export const api = {
         }),
       }, 8000);
       await handleResponse<any>(response);
-      
+
       // After registration, log the user in to get a token
       return await api.auth.login(credentials);
     },
@@ -144,7 +136,7 @@ export const api = {
     },
 
     forgotPassword: async (email: string): Promise<void> => {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/auth/forgot-password`, {
+      const response = await fetchWithTimeout(`/front/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -153,9 +145,9 @@ export const api = {
     },
 
     resetPassword: async (token: string, newPassword: string): Promise<void> => {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/auth/reset-password`, {
+      const response = await fetchWithTimeout(`/front/auth/reset-password`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
@@ -166,7 +158,7 @@ export const api = {
 
     // WeChat login endpoints
     wechatMiniLogin: async (code: string, userInfo?: any): Promise<AuthResponse> => {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/auth/wechat/mini`, {
+      const response = await fetchWithTimeout(`/front/auth/wechat/mini`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, user_info: userInfo }),
@@ -187,7 +179,7 @@ export const api = {
     },
 
     wechatMpLogin: async (code: string, state: string): Promise<AuthResponse> => {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/auth/wechat/mp`, {
+      const response = await fetchWithTimeout(`/front/auth/wechat/mp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, state }),
@@ -212,7 +204,7 @@ export const api = {
     getCurrentUser: async (): Promise<any> => {
       const token = authManager.getToken()
       if (!token) throw new Error("Not authenticated")
-      
+
       const response = await fetchWithTimeout(`/front/users/me`, {
         method: "GET",
         headers: {
@@ -227,7 +219,7 @@ export const api = {
     updateProfile: async (data: { nickname: string; avatarUrl: string }): Promise<any> => {
       const token = authManager.getToken()
       if (!token) throw new Error("Not authenticated")
-      
+
       const response = await fetchWithTimeout(`/front/users/update`, {
         method: "POST",
         headers: {
@@ -239,14 +231,14 @@ export const api = {
       const res = await handleResponse<{ code: number; data: any }>(response)
       return unwrapHttpResult(res)
     },
-    
+
     uploadAvatar: async (file: File): Promise<string> => {
       const token = authManager.getToken()
       if (!token) throw new Error("Not authenticated")
-      
+
       const formData = new FormData()
       formData.append('file', file)
-      
+
       const response = await fetchWithTimeout(`/front/users/avatar/upload`, {
         method: "POST",
         headers: {
@@ -260,7 +252,7 @@ export const api = {
   },
 
   // Memory items endpoints
-  getMemoryItems: async (params?: { keyword?: string; category?: string; page?: number; size?: number }): Promise<UnifiedItem[]> => {
+  getMemoryItems: async (params?: { keyword?: string; category?: string; page?: number; size?: number }): Promise<MemoryItem[]> => {
     const token = authManager.getToken()
     if (!token) throw new Error("Not authenticated")
 
@@ -295,7 +287,7 @@ export const api = {
     }))
   },
 
-  getMemoryItem: async (id: string): Promise<UnifiedItem> => {
+  getMemoryItem: async (id: string): Promise<MemoryItem> => {
     const token = authManager.getToken()
     if (!token) throw new Error("Not authenticated")
 
@@ -348,7 +340,7 @@ export const api = {
     }, 8000)
     const res = await handleResponse<{ code: number; data: any }>(response)
     const id = unwrapHttpResult(res)
-    
+
     // 返回临时构建的对象，ID使用后端返回的
     return {
       id: String(id),
@@ -376,11 +368,12 @@ export const api = {
     if (updates.title !== undefined) payload.title = updates.title
     if (updates.content !== undefined) payload.content = updates.content
     if (updates.category !== undefined) payload.category = updates.category
-    if (updates.tags !== undefined) payload.tags = Array.isArray(updates.tags) ? updates.tags.join(',') : String(updates.tags || '')
+    if (updates.tags !== undefined) payload.tags = Array.isArray(updates.tags) ? updates.tags : []
     if (updates.difficulty !== undefined) payload.difficulty = updates.difficulty
     if (updates.mastery !== undefined) payload.mastery = updates.mastery
     if (updates.reviewCount !== undefined) payload.reviewCount = updates.reviewCount
     if (updates.starred !== undefined) payload.starred = updates.starred ? 1 : 0
+    if (updates.next_review_date !== undefined) payload.nextReviewDate = updates.next_review_date
 
     const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/front/memory/items/update`, {
       method: "POST",
@@ -390,24 +383,19 @@ export const api = {
       },
       body: JSON.stringify(payload),
     }, 8000);
-    const res = await handleResponse<{ code: number; data: any }>(response)
-    const dto = unwrapHttpResult(res)
-    return {
-      id: String(dto.id),
-      user_id: String(dto.userId) as any,
-      created_at: new Date().toISOString(),
-      title: dto.title || '',
-      content: dto.content || '',
-      tags: typeof dto.tags === 'string' ? dto.tags.split(',').filter(Boolean) : Array.isArray(dto.tags) ? dto.tags : [],
-      category: dto.category || 'general',
-      difficulty: (dto.difficulty || 'medium'),
-      mastery: Number(dto.mastery ?? 0),
-      reviewCount: Number(dto.reviewCount ?? 0),
-      starred: dto.starred === 1 || dto.starred === true,
-      next_review_date: dto.nextReviewDate ? new Date(dto.nextReviewDate).toISOString() : null,
-      type: 'memory',
-      status: 'new'
+    const res = await handleResponse<{ code: number; data: boolean }>(response)
+    const success = unwrapHttpResult(res)
+
+    if (!success) {
+      throw new Error('Update failed');
     }
+
+    // Since the backend only returns a boolean, we construct the updated item from the original/updates
+    // In a real scenario, we might want to fetch the updated item or just return what we sent
+    return {
+      id: itemId,
+      ...updates,
+    } as MemoryItem
   },
 
   updateMemoryItemAids: async (_itemId: string, _aids: MemoryAids): Promise<MemoryItem> => {
@@ -419,7 +407,7 @@ export const api = {
     const token = authManager.getToken();
     if (!token) throw new Error("Not authenticated");
 
-    const response = await fetchWithTimeout(`${API_BASE_URL}/review_schedules?memory_item_id=${memoryItemId}`, {
+    const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/review_schedules?memory_item_id=${memoryItemId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -431,7 +419,7 @@ export const api = {
     const token = authManager.getToken();
     if (!token) throw new Error("Not authenticated");
 
-    const response = await fetchWithTimeout(`${API_BASE_URL}/review_schedules/${scheduleId}/complete`, {
+    const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/review_schedules/${scheduleId}/complete`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -447,7 +435,7 @@ export const api = {
     const token = authManager.getToken()
     if (!token) throw new Error("Not authenticated")
 
-    const response = await fetchWithTimeout(`${API_BASE_URL}/memory/generate`, {
+    const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/memory/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -480,48 +468,85 @@ export const api = {
     // Placeholder: 等待后端接入
     return Promise.resolve([])
   },
-  
+
   createPlan: async (plan: any): Promise<any> => {
-     // Placeholder
-     return Promise.resolve({
-       id: Date.now().toString(),
-       title: plan.title,
-       status: 'todo',
-       created_at: new Date().toISOString()
-     })
-  },
-
-  createTask: async (title: string): Promise<TaskItem> => {
-    const token = authManager.getToken()
-    if (!token) throw new Error("Not authenticated")
-
-    const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/front/tasks/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        title: title,
-        status: 'todo',
-        priority: 0,
-        level: 'inbox'
-      }),
-    }, 8000)
-    
-    const res = await handleResponse<{ code: number; data: number }>(response)
-    const id = unwrapHttpResult(res)
-
-    return {
-      id: String(id),
-      user_id: '' as any, // 暂不返回userId
-      title: title,
-      content: '',
-      tags: [],
-      type: 'task',
+    // Placeholder
+    return Promise.resolve({
+      id: Date.now().toString(),
+      title: plan.title,
       status: 'todo',
       created_at: new Date().toISOString()
-    }
+    })
+  },
+
+  tasks: {
+    create: async (title: string): Promise<TaskItem> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error("Not authenticated")
+
+      const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/front/tasks/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: title,
+          status: 'todo',
+          priority: 0,
+          level: 'inbox'
+        }),
+      }, 8000)
+
+      const res = await handleResponse<{ code: number; data: number }>(response)
+      const id = unwrapHttpResult(res)
+
+      return {
+        id: String(id),
+        user_id: '' as any, // 暂不返回userId
+        title: title,
+        content: '',
+        tags: [],
+        type: 'task',
+        status: 'todo',
+        created_at: new Date().toISOString()
+      }
+    },
+
+    decompose: async (id: string): Promise<string> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error("Not authenticated")
+
+      const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/front/tasks/${id}/decompose`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }, 30000)
+
+      const res = await handleResponse<{ code: number; data: string }>(response)
+      return unwrapHttpResult(res)
+    },
+
+    generateMemoryAids: async (id: string): Promise<string> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error("Not authenticated")
+
+      const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/front/tasks/${id}/generate-memory-aids`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }, 30000)
+
+      const res = await handleResponse<{ code: number; data: string }>(response)
+      return unwrapHttpResult(res)
+    },
+  },
+
+  // 向后兼容旧的 createTask
+  createTask: async (title: string): Promise<TaskItem> => {
+    return api.tasks.create(title)
   },
 
   // Reviews endpoints
@@ -529,18 +554,18 @@ export const api = {
     // Placeholder: 等待后端接入
     return Promise.resolve([])
   },
-  
+
   createReview: async (review: any): Promise<any> => {
-     // Placeholder
-     return Promise.resolve({})
+    // Placeholder
+    return Promise.resolve({})
   },
 
   // Media generation endpoints
-  generateImage: async (content: string, context: string = ""): Promise<{prompt: string, image_url?: string, image_base64?: string, status: string}> => {
+  generateImage: async (content: string, context: string = ""): Promise<{ prompt: string, image_url?: string, image_base64?: string, status: string }> => {
     const token = authManager.getToken()
     if (!token) throw new Error("Not authenticated")
 
-    const response = await fetchWithTimeout(`${API_BASE_URL}/generate/image`, {
+    const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/generate/image`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -548,22 +573,22 @@ export const api = {
       },
       body: JSON.stringify({ content, context }),
     }, 15000)
-    return handleResponse<{prompt: string, image_url?: string, image_base64?: string, status: string}>(response)
+    return handleResponse<{ prompt: string, image_url?: string, image_base64?: string, status: string }>(response)
   },
 
-  generateAudio: async (content: string, context: string = ""): Promise<{script: string, audio_base64?: string, duration?: number, sound_description?: string, sound_type?: string, message?: string, status: string}> => {
+  generateAudio: async (content: string, context: string = ""): Promise<{ script: string, audio_base64?: string, duration?: number, sound_description?: string, sound_type?: string, message?: string, status: string }> => {
     const token = authManager.getToken()
     if (!token) throw new Error("Not authenticated")
 
-    const response = await fetchWithTimeout(`${API_BASE_URL}/generate/audio`, {
-    method: "POST",
+    const response = await fetchWithTimeout(`${ALMOND_BACK_BASE_URL}/generate/audio`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ content, context }),
     }, 15000)
-    return handleResponse<{script: string, audio_base64?: string, duration?: number, status: string}>(response)
+    return handleResponse<{ script: string, audio_base64?: string, duration?: number, status: string }>(response)
   },
 
 }

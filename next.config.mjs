@@ -13,18 +13,20 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
+    const userCenterUrl = (process.env.NEXT_PUBLIC_USER_CENTER_URL || 'https://user-center.ravey.site').replace(/\/$/, '');
+    const almondBackUrl = (process.env.NEXT_PUBLIC_ALMOND_BACK_URL || 'http://localhost:8082').replace(/\/$/, '');
     return [
       {
         source: '/front/auth/:path*',
-        destination: 'https://user-center.ravey.site/front/auth/:path*',
+        destination: `${userCenterUrl}/front/auth/:path*`,
       },
       {
         source: '/front/users/:path*',
-        destination: 'https://user-center.ravey.site/front/users/:path*',
+        destination: `${userCenterUrl}/front/users/:path*`,
       },
       {
         source: '/front/:path*',
-        destination: 'https://almond.ravey.site/front/:path*',
+        destination: `${almondBackUrl}/front/:path*`,
       },
     ]
   },

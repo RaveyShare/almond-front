@@ -128,3 +128,7 @@ export interface ReviewCompletionRequest {
   mastery: number; // 0-100 percentage
   difficulty: string; // 'easy' | 'medium' | 'hard'
 }
+
+export interface DecomposeResult {
+  subtasks: { title: string; description?: string }[];
+}

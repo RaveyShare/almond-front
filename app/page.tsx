@@ -19,6 +19,7 @@ import MemoryMnemonic from "@/components/memory-mnemonic"
 import SensoryAssociation from "@/components/sensory-association"
 import MemoryAidsViewer from "@/components/MemoryAidsViewer"
 import ShareDialog from "@/components/share-dialog"
+import DecomposeModal from "@/components/decompose-modal"
 import LoadingSpinner from "@/components/loading-spinner"
 import MissionVision from "@/components/mission-vision"
 import { formatInLocalTimezone } from "@/lib/date"
@@ -50,6 +51,10 @@ export default function Home() {
   const [shareContent, setShareContent] = useState<any>(null)
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
 
+  // Decompose modal states
+  const [decomposeModalOpen, setDecomposeModalOpen] = useState(false)
+  const [selectedTaskForDecompose, setSelectedTaskForDecompose] = useState<{ id: string, title: string } | null>(null)
+
   const router = useRouter()
 
 
@@ -79,7 +84,7 @@ export default function Home() {
     } catch (error) {
       console.error("Failed to load memory items:", error)
       const errorMessage = error instanceof Error ? error.message : ''
-      
+
       if (errorMessage.includes('超时') || errorMessage.includes('timeout')) {
         toast("网络连接较慢", {
           description: "正在努力为您加载最近的记忆内容，请稍等片刻...",
@@ -110,7 +115,7 @@ export default function Home() {
         setIsLoading(false)
         toast("任务创建成功", {
           description: "已添加到待办列表。",
-        })
+        });
       } else {
         // Memory creation logic
         const savedItem = await api.saveMemoryItem({ content: contentToSave, memory_aids: { mindMap: { id: "", label: "", children: [] }, mnemonics: [], sensoryAssociations: [] } })
@@ -120,31 +125,31 @@ export default function Home() {
         setIsLoading(false) // 停止主要的加载动画。
         toast("保存成功", {
           description: "已添加到记忆库。AI 正在后台生成辅助工具...",
-        })
+        });
 
         // 步骤 3: 在后台生成辅助工具。“即发即忘”。
         // 我们不等待这部分完成。
         (async () => {
           try {
             const memoryAids = await api.generateMemoryAids(savedItem.content)
-    
+
             // 当AI内容准备好后，显示生成的内容部分
             setGeneratedContent(savedItem.content)
             setGeneratedAids(memoryAids)
             setShowGeneratedContent(true)
-    
+
             const updatedItem = await api.updateMemoryItemAids(savedItem.id, memoryAids)
-    
+
             // 使用完整数据（包括辅助工具）更新列表中的特定项目
             setMemoryItems(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item))
-    
+
             toast("AI 辅助已生成", {
               description: `"${savedItem.content.substring(0, 20)}..."的记忆辅助工具已就绪。`,
-            })
+            });
           } catch (error) {
-            console.error("Error generating memory aids in background:", error)
+            console.error("Error generating memory aids in background:", error);
             const errorMessage = error instanceof Error ? error.message : ''
-            
+
             // 根据错误类型显示不同的友好提示
             if (errorMessage.includes('超时') || errorMessage.includes('timeout')) {
               toast("正在生成记忆辅助", {
@@ -163,7 +168,7 @@ export default function Home() {
       setInputValue(contentToSave) // 恢复输入框内容
       setIsLoading(false)
       const errorMessage = error instanceof Error ? error.message : ''
-      
+
       toast("保存失败", {
         description: errorMessage || "请稍后重试",
       })
@@ -174,10 +179,9 @@ export default function Home() {
     if (item.type === 'memory') {
       router.push(`/memory-item/${item.id}`)
     } else {
-      // TODO: Task detail or edit dialog
-      toast("任务详情", {
-         description: "任务详情功能开发中...",
-      })
+      // 任务类型，打开拆解弹窗
+      setSelectedTaskForDecompose({ id: item.id, title: item.title || item.content })
+      setDecomposeModalOpen(true)
     }
   }
 
@@ -212,7 +216,7 @@ export default function Home() {
     const userTimezone = dayjs.tz.guess();
     const now = dayjs();
     const reviewTime = dayjs.utc(reviewDate).tz(userTimezone);
-    
+
     // 计算时间差（毫秒）
     const diffMillis = reviewTime.diff(now);
 
@@ -347,11 +351,10 @@ export default function Home() {
                 <Button
                   variant={inputType === "memory" ? "default" : "ghost"}
                   onClick={() => setInputType("memory")}
-                  className={`rounded-full px-6 transition-all ${
-                    inputType === "memory" 
-                      ? "bg-cyan-500 hover:bg-cyan-600 text-black font-medium" 
-                      : "text-white/70 hover:text-white hover:bg-white/10"
-                  }`}
+                  className={`rounded-full px-6 transition-all ${inputType === "memory"
+                    ? "bg-cyan-500 hover:bg-cyan-600 text-black font-medium"
+                    : "text-white/70 hover:text-white hover:bg-white/10"
+                    }`}
                 >
                   <PenTool className="mr-2 h-4 w-4" />
                   记知识
@@ -359,11 +362,10 @@ export default function Home() {
                 <Button
                   variant={inputType === "task" ? "default" : "ghost"}
                   onClick={() => setInputType("task")}
-                  className={`rounded-full px-6 transition-all ${
-                    inputType === "task" 
-                      ? "bg-cyan-500 hover:bg-cyan-600 text-black font-medium" 
-                      : "text-white/70 hover:text-white hover:bg-white/10"
-                  }`}
+                  className={`rounded-full px-6 transition-all ${inputType === "task"
+                    ? "bg-cyan-500 hover:bg-cyan-600 text-black font-medium"
+                    : "text-white/70 hover:text-white hover:bg-white/10"
+                    }`}
                 >
                   <ListTodo className="mr-2 h-4 w-4" />
                   记待办
@@ -516,9 +518,9 @@ export default function Home() {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   {item.type === 'task' && (
-                                     <div className="rounded-full border border-white/30 p-1">
-                                       <ListTodo className="h-3 w-3 text-cyan-400" />
-                                     </div>
+                                    <div className="rounded-full border border-white/30 p-1">
+                                      <ListTodo className="h-3 w-3 text-cyan-400" />
+                                    </div>
                                   )}
                                   <h4 className={`font-medium text-white ${item.status === 'done' ? 'line-through text-white/50' : ''}`}>{item.content.substring(0, 20)}...</h4>
                                   {/* Add starred logic if needed */}
@@ -536,8 +538,22 @@ export default function Home() {
                                     <p className="text-white/50">{getRelativeTimeText(item.next_review_date)}</p>
                                   </>
                                 ) : (
-                                  <div className="flex items-center text-cyan-400">
+                                  <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center space-x-2 text-cyan-400">
                                       <span className="bg-white/10 px-2 py-0.5 rounded text-xs">待办</span>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-cyan-400 hover:text-cyan-300 hover:bg-white/5"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMemoryItemClick(item);
+                                      }}
+                                    >
+                                      <Brain className="h-3.5 w-3.5 mr-1" />
+                                      <span className="text-xs">AI 拆解</span>
+                                    </Button>
                                   </div>
                                 )}
                               </div>
@@ -561,7 +577,7 @@ export default function Home() {
       </section>
 
       <MissionVision />
-      
+
       <footer className="border-t border-white/10 py-8">
         <div className="container flex flex-col items-center justify-between space-y-4 px-4 md:flex-row md:space-y-0">
           <div className="flex items-center space-x-2">
@@ -588,6 +604,15 @@ export default function Home() {
       </footer>
 
       <ShareDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen} type={shareType} content={shareContent} />
+
+      {selectedTaskForDecompose && (
+        <DecomposeModal
+          open={decomposeModalOpen}
+          onOpenChange={setDecomposeModalOpen}
+          taskId={selectedTaskForDecompose.id}
+          taskTitle={selectedTaskForDecompose.title}
+        />
+      )}
     </div>
   )
 }

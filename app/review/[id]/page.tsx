@@ -58,8 +58,8 @@ const MemoryStatusCard = ({ item }: { item: MemoryItem | null }) => {
           <span className="text-gray-400">难度</span>
           <Badge variant="secondary" className={
             item.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
-            item.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-            'bg-red-500/20 text-red-400'
+              item.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                'bg-red-500/20 text-red-400'
           }>
             {item.difficulty}
           </Badge>
@@ -69,7 +69,7 @@ const MemoryStatusCard = ({ item }: { item: MemoryItem | null }) => {
           <Badge variant="outline" className="border-cyan-400/50 text-cyan-400">{item.category}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-2 pt-2">
-          <span className="text-gray-400"><Tag className="inline h-4 w-4 mr-1"/>标签</span>
+          <span className="text-gray-400"><Tag className="inline h-4 w-4 mr-1" />标签</span>
           {item.tags.map(tag => <Badge key={tag} variant="outline" className="border-cyan-400/50 text-cyan-400">{tag}</Badge>)}
         </div>
       </CardContent>
@@ -98,17 +98,17 @@ export default function ReviewPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [shareType, setShareType] = useState<string | null>(null)
   const [shareContent, setShareContent] = useState<any>(null)
-  
+
   useEffect(() => {
     if (!itemId) return
-    
+
     let retryCount = 0
     const maxRetries = 2
-    
+
     const fetchData = async () => {
       try {
         setIsLoading(true)
-        
+
         const [fetchedItem, schedules] = await Promise.all([
           api.getMemoryItem(itemId),
           api.getReviewSchedules(itemId)
@@ -116,10 +116,10 @@ export default function ReviewPage() {
 
         setItem(fetchedItem)
         setEditableItem(fetchedItem)
-        
+
         setMastery(fetchedItem.mastery)
         setDifficulty(fetchedItem.difficulty)
-        
+
         // 确保从后端获取的 UTC 日期时间正确转换为本地时间
         if (fetchedItem.next_review_date) {
           // 使用 dayjs 处理 UTC 日期时间
@@ -129,7 +129,7 @@ export default function ReviewPage() {
         } else {
           setNextReviewDate(new Date());
         }
-        
+
         setCategory(fetchedItem.category)
         setTags(fetchedItem.tags)
 
@@ -140,11 +140,11 @@ export default function ReviewPage() {
         if (upcomingSchedules.length > 0) {
           setCurrentSchedule(upcomingSchedules[0]);
         }
-        
+
       } catch (error) {
         console.error("Failed to fetch review data:", error)
         const errorMessage = error instanceof Error ? error.message : "未知错误"
-        
+
         if (retryCount < maxRetries && errorMessage.includes('超时')) {
           retryCount++
           toast({
@@ -153,21 +153,21 @@ export default function ReviewPage() {
             variant: "destructive",
             open: true
           })
-          
+
           // 延迟后重试
           setTimeout(() => {
             fetchData()
           }, 1000 * retryCount)
           return
         }
-        
-        toast({ 
-          title: "加载失败", 
+
+        toast({
+          title: "加载失败",
           description: errorMessage.includes('超时') ? '网络连接超时，请检查网络后重试' : '无法加载复习内容，请稍后重试',
-          variant: "destructive", 
-          open: true 
+          variant: "destructive",
+          open: true
         })
-        
+
         // 延迟跳转，让用户看到错误信息
         setTimeout(() => {
           router.push("/memory-library")
@@ -176,7 +176,7 @@ export default function ReviewPage() {
         setIsLoading(false)
       }
     }
-    
+
     fetchData()
   }, [itemId, router, toast])
 
@@ -208,35 +208,37 @@ export default function ReviewPage() {
 
   const handleCompleteReview = async () => {
     if (!item || !editableItem) {
-        toast({ title: "错误", description: "数据不完整，无法保存。", variant: "destructive", open: true });
-        return;
+      toast({ title: "错误", description: "数据不完整，无法保存。", variant: "destructive", open: true });
+      return;
     }
     setIsSubmitting(true)
     try {
       // 如果有当前复习计划，完成它
-       if (currentSchedule) {
-         // 发送掌握度和难度给后端
-         await api.completeReview(currentSchedule.id, { 
-           mastery: mastery,
-           difficulty: difficulty 
-         })
-       }
-      
+      if (currentSchedule) {
+        // 发送掌握度和难度给后端
+        await api.completeReview(currentSchedule.id, {
+          mastery: mastery,
+          difficulty: difficulty
+        })
+      }
+
       // 将本地时间直接转换为 ISO 字符串（这已经是 UTC 时间）
       // 注意：不需要使用 Date.UTC 进行额外转换，因为 toISOString() 已经是 UTC 格式
       const utcNextReviewDate = dayjs(nextReviewDate).toISOString();
-      
+
       await api.updateMemoryItem(item.id, {
         content: editableItem.content,
         category: category,
         tags: tags,
         next_review_date: utcNextReviewDate,
-        memory_aids: editableItem.memory_aids
+        memory_aids: editableItem.memory_aids,
+        mastery: mastery,
+        difficulty: difficulty as any
       })
 
       // 清除当前复习计划状态，表示复习已完成
       setCurrentSchedule(null)
-      
+
       toast({ title: "复习完成！", description: `"${item.title}"已更新。`, open: true })
       router.push("/memory-library")
     } catch (error) {
@@ -291,8 +293,8 @@ export default function ReviewPage() {
                   <CardTitle className="flex items-center text-cyan-400"><Eye className="mr-2 h-5 w-5" />AI 记忆辅助</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <MemoryAidsViewer 
-                    aids={editableItem.memory_aids} 
+                  <MemoryAidsViewer
+                    aids={editableItem.memory_aids}
                     onShare={handleShare}
                   />
                 </CardContent>
@@ -316,10 +318,10 @@ export default function ReviewPage() {
                   <Label className="text-gray-300">本次难度评估</Label>
                   <RadioGroup value={difficulty} onValueChange={setDifficulty} className="mt-2 grid grid-cols-3 gap-2">
                     {[
-                      {value: "easy", label: "简单", color: "green"},
-                      {value: "medium", label: "中等", color: "yellow"},
-                      {value: "hard", label: "困难", color: "red"}
-                    ].map(({value, label, color}) => {
+                      { value: "easy", label: "简单", color: "green" },
+                      { value: "medium", label: "中等", color: "yellow" },
+                      { value: "hard", label: "困难", color: "red" }
+                    ].map(({ value, label, color }) => {
                       const isSelected = difficulty === value;
                       const colorClasses: Record<string, string> = {
                         green: 'border-green-500 bg-green-500/20 text-green-300',
@@ -398,12 +400,12 @@ export default function ReviewPage() {
             </Card>
           </div>
         </main>
-        
-        <ShareDialog 
-          open={shareDialogOpen} 
-          onOpenChange={setShareDialogOpen} 
-          type={shareType} 
-          content={shareContent} 
+
+        <ShareDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          type={shareType}
+          content={shareContent}
         />
       </div>
     </AuthGuard>
