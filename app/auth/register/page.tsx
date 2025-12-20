@@ -21,7 +21,7 @@ export default function RegisterPage() {
           {/* Logo */}
           <Link className="mb-8 flex items-center space-x-2 font-bold" href="/">
             <Brain className="h-8 w-8 text-cyan-400" />
-            <span className="text-xl">小杏仁记忆搭子</span>
+            <span className="text-xl">小杏仁</span>
           </Link>
 
           {/* Register Form */}

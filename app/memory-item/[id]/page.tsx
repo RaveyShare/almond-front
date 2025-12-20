@@ -257,7 +257,7 @@ export default function MemoryItemDetailsPage() {
           <div className="container flex h-16 items-center justify-between px-4">
             <Link className="flex items-center space-x-2 font-bold" href="/">
               <Brain className="h-6 w-6 text-cyan-400" />
-              <span>小杏仁记忆搭子</span>
+              <span>小杏仁</span>
             </Link>
             <Button variant="ghost" onClick={() => router.push("/memory-library")}>
               返回记忆库

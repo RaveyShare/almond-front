@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { ArrowLeft, Brain, BarChart, Tag, Loader2, Save, Wand2, BookOpen, Eye, X } from "lucide-react"
+import { ArrowLeft, Brain, BarChart, Tag, Loader2, Save, Wand2, BookOpen, Eye, X, Plus } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -264,7 +264,7 @@ export default function ReviewPage() {
           <div className="container flex h-16 items-center justify-between px-4">
             <Link className="flex items-center space-x-2 font-bold" href="/">
               <Brain className="h-6 w-6 text-cyan-400" />
-              <span>小杏仁记忆搭子</span>
+              <span>小杏仁</span>
             </Link>
             <Button variant="ghost" onClick={() => router.push("/memory-library")}>
               返回记忆库
@@ -375,7 +375,13 @@ export default function ReviewPage() {
                       placeholder="添加新标签..."
                       className="block w-full rounded-md border-gray-600 bg-gray-800/50 text-gray-200 focus:border-cyan-400 focus:ring-cyan-400"
                     />
-                    <Button onClick={handleTagAdd} variant="outline" className="border-gray-600 bg-gray-800/50 hover:bg-gray-700/50">添加</Button>
+                    <Button
+                      onClick={handleTagAdd}
+                      className="shrink-0 bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/30 hover:border-cyan-400 transition-all font-medium"
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      添加
+                    </Button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {tags.map(tag => (

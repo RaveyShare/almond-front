@@ -13,14 +13,14 @@ const MOCK_USERS: User[] = [
     id: "user_001",
     email: "demo@almond.ai",
     name: "张小明",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=demo",
+    avatar: "https://oss.ravey.site/almond.png",
     createdAt: "2024-01-01T00:00:00Z",
   },
   {
     id: "user_002",
     email: "test@example.com",
     name: "李小红",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=test",
+    avatar: "https://oss.ravey.site/almond.png",
     createdAt: "2024-01-02T00:00:00Z",
   },
 ]
@@ -102,7 +102,7 @@ export const mockAuthService = {
       id: `user_${Date.now()}`,
       email,
       name,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+      avatar: 'https://oss.ravey.site/almond.png',
       createdAt: new Date().toISOString(),
     }
 

@@ -189,7 +189,7 @@ export default function Home() {
     try {
       await api.auth.logout()
       toast("已退出登录", {
-        description: "感谢使用小杏仁记忆搭子",
+        description: "感谢使用小杏仁",
       })
     } catch (error) {
       console.error("Logout error:", error)

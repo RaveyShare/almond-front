@@ -149,6 +149,17 @@ export class AuthManager {
   getRefreshToken(): string | null {
     return this.refreshToken
   }
+  getAuth(): AuthResponse | null {
+  if (!this.user || !this.token || !this.refreshToken) {
+    return null
+  }
+  return {
+    user: this.user,
+    token: this.token,
+    refreshToken: this.refreshToken
+  }
 }
+}
+
 
 export const authManager = AuthManager.getInstance()

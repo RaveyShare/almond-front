@@ -35,10 +35,12 @@ export default function AuthGuard({ children, requireAuth = false, publicOnly = 
       }
 
       const isAuthenticated = authManager.isAuthenticated()
+      console.log(`AuthGuard检查: requireAuth=${requireAuth}, publicOnly=${publicOnly}, isAuthenticated=${isAuthenticated}, pathname=${pathname}`)
 
       // Case 1: Page requires authentication, but user is not logged in
       if (requireAuth && !isAuthenticated) {
         const redirectUrl = `/auth/login?redirect=${encodeURIComponent(pathname + searchParams.toString())}`
+        console.log(`未认证用户访问需要认证的页面，重定向到: ${redirectUrl}`)
         router.replace(redirectUrl)
         return
       }
@@ -46,6 +48,7 @@ export default function AuthGuard({ children, requireAuth = false, publicOnly = 
       // Case 2: Page is for public only (e.g., login), but user is already logged in
       if (publicOnly && isAuthenticated) {
         const redirect = searchParams.get("redirect") || "/"
+        console.log(`已认证用户访问publicOnly页面，重定向到: ${redirect}`)
         router.replace(redirect)
         return
       }

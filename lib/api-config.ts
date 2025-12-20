@@ -56,150 +56,260 @@ function unwrapHttpResult<T>(res: { code: number; data: T; message?: string }): 
 }
 
 // API request functions
+// We will define specific method objects first to avoid circular type inference
+const frontAuthMethods = {
+  generateQr: async (appId: string, scene?: string): Promise<{ qrcodeId: string; expireAt: number; qrContent: string }> => {
+    const response = await fetchWithTimeout(`/front/auth/qr/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appId, scene }),
+    }, 8000)
+    const res = await handleResponse<{ code: number; data: { qrcodeId: string; expireAt: number; qrContent: string } }>(response)
+    if (res.code !== 0 && res.code !== 200) throw new Error('生成二维码失败')
+    return res.data
+  },
+  generateWxacode: async (appId: string, qrcodeId: string, page = 'pages/auth/login/login', width = 430, envVersion: 'release' | 'trial' | 'develop' = 'release'): Promise<{ qrcodeId: string; expireAt: number; imageBase64: string }> => {
+    const response = await fetchWithTimeout(`/front/auth/qr/wxacode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appId, qrcodeId, page, width, envVersion, checkPath: true }),
+    }, 10000)
+    const res = await handleResponse<{ code: number; data: { qrcodeId: string; expireAt: number; imageBase64: string } }>(response)
+    if (res.code !== 0 && res.code !== 200) throw new Error('生成小程序码失败')
+    return res.data
+  },
+  checkQr: async (qrcodeId: string): Promise<{ status: number; token?: string; userInfo?: { id: string | number; nickname: string; avatarUrl?: string } }> => {
+    const response = await fetchWithTimeout(`/front/auth/qr/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qrcodeId }),
+    }, 8000)
+    const res = await handleResponse<{ code: number; data: { status: number; token?: string; userInfo?: { id: string | number; nickname: string; avatarUrl?: string } } }>(response)
+    if (res.code !== 0 && res.code !== 200) throw new Error('查询二维码状态失败')
+    return res.data
+  },
+}
+
+// Define Authentication endpoints separately to avoid circular reference in type inference
+const authMethods = {
+  // Email Authentication
+  sendCode: async (email: string, scene: number): Promise<void> => {
+    const response = await fetchWithTimeout(`/front/auth/email/sendCode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, scene }),
+    }, 8000)
+    const res = await handleResponse<{ code: number; message: string }>(response)
+    if (res.code !== 200 && res.code !== 0) throw new Error(res.message || '发送失败')
+
+    // 检查是否有错误消息
+    if (res.message && res.message.includes('失败')) {
+      throw new Error(res.message)
+    }
+  },
+
+  emailRegister: async (data: RegisterCredentials & { code: string }): Promise<AuthResponse> => {
+    const response = await fetchWithTimeout(`/front/auth/email/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+        code: data.code,
+        nickname: data.name,
+      }),
+    }, 8000)
+    const res = await handleResponse<{ code: number; data: any; message: string }>(response)
+    if (res.code !== 200 && res.code !== 0) throw new Error(res.message || '注册失败')
+
+    // 兼容后端返回对象或纯字符串的情况
+    const regData = res.data
+    const token = typeof regData === 'string' ? regData : regData.token
+
+    if (!token) {
+      throw new Error(res.message || '注册失败：未获取到有效 Token')
+    }
+
+    const tokenPayload: any = jwtDecode(token)
+
+    // 优先使用后端返回的用户信息
+    let user;
+    if (regData.userInfo) {
+      const u = regData.userInfo
+      user = {
+        id: String(u.id),
+        email: u.email || data.email,
+        name: u.nickname || data.name,
+        avatar: u.avatarUrl || 'https://oss.ravey.site/almond.png',
+        createdAt: new Date().toISOString(),
+      }
+    } else {
+      user = {
+        id: tokenPayload.sub || tokenPayload.userId,
+        email: data.email,
+        name: data.name,
+        avatar: 'https://oss.ravey.site/almond.png',
+        createdAt: new Date().toISOString(),
+      }
+    }
+
+    const authData = { user, token, refreshToken: "" }
+    authManager.setAuth(authData)
+    return authData
+  },
+
+  emailLogin: async (data: LoginCredentials & { code?: string; loginType: number }): Promise<AuthResponse> => {
+    const response = await fetchWithTimeout(`/front/auth/email/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+        code: data.code || "",
+        loginType: data.loginType,
+      }),
+    }, 8000)
+    const res = await handleResponse<{ code: number; data: any; message: string }>(response)
+    if (res.code !== 200 && res.code !== 0) throw new Error(res.message || '登录失败')
+
+    const loginData = res.data
+    const token = typeof loginData === 'string' ? loginData : loginData.token
+
+    if (!token) {
+      throw new Error(res.message || '登录失败：未获取到 Token')
+    }
+
+    const tokenPayload: any = jwtDecode(token)
+
+    // 如果后端直接返回了用户信息，直接使用，不再请求 /me
+    if (loginData.userInfo) {
+      const u = loginData.userInfo
+      const user = {
+        id: String(u.id),
+        email: u.email || data.email,
+        name: u.nickname || u.email,
+        avatar: u.avatarUrl || 'https://oss.ravey.site/almond.png',
+        createdAt: new Date().toISOString(),
+      }
+      const authData = { user, token, refreshToken: "" }
+      authManager.setAuth(authData)
+      return authData
+    }
+
+    // 兼容旧逻辑：如果没返回 userInfo，尝试请求 /me 或使用 payload 兜底
+    try {
+      const userRes = await fetchWithTimeout(`/front/users/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const userData = await handleResponse<{ code: number; data: any }>(userRes)
+      const detailedUser = unwrapHttpResult(userData)
+      const user = {
+        id: String(detailedUser.id),
+        email: detailedUser.email || data.email,
+        name: detailedUser.nickname || detailedUser.username || detailedUser.email,
+        avatar: detailedUser.avatarUrl || 'https://oss.ravey.site/almond.png',
+        createdAt: detailedUser.createdAt || new Date().toISOString(),
+      }
+      const authData = { user, token, refreshToken: "" }
+      authManager.setAuth(authData)
+      return authData
+    } catch (e) {
+      const user = {
+        id: tokenPayload.sub || tokenPayload.userId,
+        email: data.email,
+        name: data.email.split('@')[0],
+        avatar: 'https://oss.ravey.site/almond.png',
+        createdAt: new Date().toISOString(),
+      }
+      const authData = { user, token, refreshToken: "" }
+      authManager.setAuth(authData)
+      return authData
+    }
+  },
+
+  emailResetPassword: async (data: { email: string; newPassword: string; code: string }): Promise<void> => {
+    const response = await fetchWithTimeout(`/front/auth/email/resetPassword`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: data.email,
+        newPassword: data.newPassword,
+        code: data.code,
+      }),
+    }, 8000)
+    const res = await handleResponse<{ code: number; message: string }>(response)
+    if (res.code !== 200 && res.code !== 0) throw new Error(res.message || '重置失败')
+  },
+
+  // Legacy or generic login/register (mapping to new ones if possible)
+  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+    return authMethods.emailLogin({ ...credentials, loginType: 1 })
+  },
+
+  register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
+    throw new Error('Please use emailRegister with verification code')
+  },
+
+  logout: async (): Promise<void> => {
+    authManager.clearAuth();
+    return Promise.resolve();
+  },
+
+  forgotPassword: async (email: string): Promise<void> => {
+    return authMethods.sendCode(email, 3) // 3 is reset password scene
+  },
+
+  resetPassword: async (token: string, newPassword: string): Promise<void> => {
+    throw new Error('Please use emailResetPassword with email and verification code')
+  },
+
+  // WeChat login endpoints
+  wechatMiniLogin: async (code: string, userInfo?: any): Promise<AuthResponse> => {
+    const response = await fetchWithTimeout(`/front/auth/wechat/mini`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, user_info: userInfo }),
+    }, 8000);
+    const data = await handleResponse<{ access_token: string, user: any }>(response);
+
+    const user = {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.full_name,
+      avatar: data.user.wechat_avatar || 'https://oss.ravey.site/almond.png',
+      createdAt: new Date().toISOString(),
+    };
+
+    const authData = { user, token: data.access_token, refreshToken: "" };
+    authManager.setAuth(authData);
+    return authData;
+  },
+
+  wechatMpLogin: async (code: string, state: string): Promise<AuthResponse> => {
+    const response = await fetchWithTimeout(`/front/auth/wechat/mp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, state }),
+    }, 8000);
+    const data = await handleResponse<{ access_token: string, user: any }>(response);
+
+    const user = {
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.full_name,
+      avatar: data.user.wechat_avatar || 'https://oss.ravey.site/almond.png',
+      createdAt: new Date().toISOString(),
+    };
+
+    const authData = { user, token: data.access_token, refreshToken: "" };
+    authManager.setAuth(authData);
+    return authData;
+  },
+}
+
 export const api = {
-  frontAuth: {
-    generateQr: async (appId: string, scene?: string): Promise<{ qrcodeId: string; expireAt: number; qrContent: string }> => {
-      const response = await fetchWithTimeout(`/front/auth/qr/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appId, scene }),
-      }, 8000)
-      const res = await handleResponse<{ code: number; data: { qrcodeId: string; expireAt: number; qrContent: string } }>(response)
-      if (res.code !== 0 && res.code !== 200) throw new Error('生成二维码失败')
-      return res.data
-    },
-    generateWxacode: async (appId: string, qrcodeId: string, page = 'pages/auth/login/login', width = 430, envVersion: 'release' | 'trial' | 'develop' = 'release'): Promise<{ qrcodeId: string; expireAt: number; imageBase64: string }> => {
-      const response = await fetchWithTimeout(`/front/auth/qr/wxacode`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appId, qrcodeId, page, width, envVersion, checkPath: true }),
-      }, 10000)
-      const res = await handleResponse<{ code: number; data: { qrcodeId: string; expireAt: number; imageBase64: string } }>(response)
-      if (res.code !== 0 && res.code !== 200) throw new Error('生成小程序码失败')
-      return res.data
-    },
-    checkQr: async (qrcodeId: string): Promise<{ status: number; token?: string; userInfo?: { id: string | number; nickname: string; avatarUrl?: string } }> => {
-      const response = await fetchWithTimeout(`/front/auth/qr/check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qrcodeId }),
-      }, 8000)
-      const res = await handleResponse<{ code: number; data: { status: number; token?: string; userInfo?: { id: string | number; nickname: string; avatarUrl?: string } } }>(response)
-      if (res.code !== 0 && res.code !== 200) throw new Error('查询二维码状态失败')
-      return res.data
-    },
-  },
-  // Authentication endpoints
-  auth: {
-    login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-      const response = await fetchWithTimeout(`/front/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-      }, 8000);
-      const data = await handleResponse<{ access_token: string }>(response);
-
-      // Decode JWT to get user info
-      const tokenPayload: { sub: string, email: string, full_name: string } = jwtDecode(data.access_token);
-      const user = {
-        id: tokenPayload.sub,
-        email: tokenPayload.email,
-        name: tokenPayload.full_name,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${tokenPayload.sub}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      const authData = { user, token: data.access_token, refreshToken: "" };
-      authManager.setAuth(authData);
-      return authData;
-    },
-
-    register: async (credentials: RegisterCredentials): Promise<AuthResponse> => {
-      const response = await fetchWithTimeout(`/front/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: credentials.email,
-          password: credentials.password,
-          full_name: credentials.name,
-        }),
-      }, 8000);
-      await handleResponse<any>(response);
-
-      // After registration, log the user in to get a token
-      return await api.auth.login(credentials);
-    },
-
-    logout: async (): Promise<void> => {
-      authManager.clearAuth();
-      return Promise.resolve();
-    },
-
-    forgotPassword: async (email: string): Promise<void> => {
-      const response = await fetchWithTimeout(`/front/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      })
-      await handleResponse(response)
-    },
-
-    resetPassword: async (token: string, newPassword: string): Promise<void> => {
-      const response = await fetchWithTimeout(`/front/auth/reset-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ password: newPassword }),
-      })
-      await handleResponse(response)
-    },
-
-    // WeChat login endpoints
-    wechatMiniLogin: async (code: string, userInfo?: any): Promise<AuthResponse> => {
-      const response = await fetchWithTimeout(`/front/auth/wechat/mini`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, user_info: userInfo }),
-      }, 8000);
-      const data = await handleResponse<{ access_token: string, user: any }>(response);
-
-      const user = {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.full_name,
-        avatar: data.user.wechat_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.id}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      const authData = { user, token: data.access_token, refreshToken: "" };
-      authManager.setAuth(authData);
-      return authData;
-    },
-
-    wechatMpLogin: async (code: string, state: string): Promise<AuthResponse> => {
-      const response = await fetchWithTimeout(`/front/auth/wechat/mp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, state }),
-      }, 8000);
-      const data = await handleResponse<{ access_token: string, user: any }>(response);
-
-      const user = {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.full_name,
-        avatar: data.user.wechat_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.user.id}`,
-        createdAt: new Date().toISOString(),
-      };
-
-      const authData = { user, token: data.access_token, refreshToken: "" };
-      authManager.setAuth(authData);
-      return authData;
-    },
-  },
-
+  frontAuth: frontAuthMethods,
+  auth: authMethods,
   user: {
     getCurrentUser: async (): Promise<any> => {
       const token = authManager.getToken()
@@ -368,7 +478,7 @@ export const api = {
     if (updates.title !== undefined) payload.title = updates.title
     if (updates.content !== undefined) payload.content = updates.content
     if (updates.category !== undefined) payload.category = updates.category
-    if (updates.tags !== undefined) payload.tags = Array.isArray(updates.tags) ? updates.tags : []
+    if (updates.tags !== undefined) payload.tags = updates.tags;
     if (updates.difficulty !== undefined) payload.difficulty = updates.difficulty
     if (updates.mastery !== undefined) payload.mastery = updates.mastery
     if (updates.reviewCount !== undefined) payload.reviewCount = updates.reviewCount

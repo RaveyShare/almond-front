@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
-import { Eye, EyeOff, Mail, Lock, Loader2, Smartphone, QrCode, X } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Eye, EyeOff, Mail, Lock, Loader2, QrCode, X, ShieldCheck, Github, Chrome } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,316 +12,135 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { api } from "@/lib/api-config"
-import QRCode from "qrcode"
+import { getUserFriendlyError } from "@/lib/error-handler"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [code, setCode] = useState("")
+  const [loginType, setLoginType] = useState<"password" | "code">("password")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [submitAttempted, setSubmitAttempted] = useState(false)
+  const [isSendingCode, setIsSendingCode] = useState(false)
+  const [countdown, setCountdown] = useState(0)
   const [isWechatLoading, setIsWechatLoading] = useState(false)
-  const [isWechatEnv, setIsWechatEnv] = useState(false)
   const [showQrCode, setShowQrCode] = useState(false)
-  const [qrCodeUrl, setQrCodeUrl] = useState("")
   const [wxacodeBase64, setWxacodeBase64] = useState<string>("")
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null)
-  const [isClient, setIsClient] = useState(false)
+
   const router = useRouter()
   const { toast } = useToast()
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const wechatLoginInProgress = useRef(false)
 
-  // 检测是否在微信环境中（客户端环境）
+  // 验证码倒计时
   useEffect(() => {
-    setIsClient(true)
-    const userAgent = navigator.userAgent.toLowerCase()
-    const isWechat = userAgent.includes('micromessenger')
-    setIsWechatEnv(isWechat)
-    
-    // 添加postMessage事件监听，处理微信授权回调
-    const handleMessage = (event: MessageEvent) => {
-      // 验证消息来源
-      if (event.origin !== window.location.origin) {
-        return
-      }
-      
-      if (event.data.type === 'WECHAT_LOGIN_SUCCESS') {
-        const { user, token } = event.data
-        
-        // 存储用户信息和token
-        localStorage.setItem('token', token)
-        localStorage.setItem('user', JSON.stringify(user))
-        
-        // 关闭二维码对话框
-        setShowQrCode(false)
-        
-        // 显示成功提示
-        toast({
-          title: "登录成功",
-          description: `欢迎回来，${user.username || user.email}！`,
-        })
-        
-        // 刷新页面或跳转
-        setTimeout(() => {
-          window.location.reload()
-        }, 1000)
-      } else if (event.data.type === 'WECHAT_LOGIN_ERROR') {
-        // 关闭二维码对话框
-        setShowQrCode(false)
-        
-        // 显示错误提示
-        toast({
-          title: "登录失败",
-          description: event.data.message || "微信登录失败，请重试",
-          variant: "destructive",
-        })
-      }
+    let timer: NodeJS.Timeout
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000)
     }
-    
-    window.addEventListener('message', handleMessage)
-    
-    return () => {
-      window.removeEventListener('message', handleMessage)
+    return () => clearTimeout(timer)
+  }, [countdown])
+
+  const handleSendCode = async () => {
+    if (!email) {
+      toast({ title: "请输入邮箱", variant: "destructive" })
+      return
     }
-  }, [])
+    try {
+      setIsSendingCode(true)
+      await api.auth.sendCode(email, 2) // 2-登录
+      setCountdown(60)
+      toast({ title: "验证码已发送", description: "请查收您的邮箱" })
+    } catch (error) {
+      const errorInfo = getUserFriendlyError(error)
+      toast({
+        title: errorInfo.title,
+        description: errorInfo.description,
+        variant: "destructive",
+      })
+    } finally {
+      setIsSendingCode(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // 防止重复提交
-    if (isLoading || submitAttempted) {
-      return
-    }
-
-    if (!email || !password) {
-      toast({
-        title: "请填写所有字段",
-        description: "邮箱和密码都是必填项",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // 简单的邮箱格式验证
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      toast({
-        title: "邮箱格式错误",
-        description: "请输入有效的邮箱地址",
-        variant: "destructive",
-      })
+    if (!email || (loginType === "password" && !password) || (loginType === "code" && !code)) {
+      toast({ title: "请填写完整信息", variant: "destructive" })
       return
     }
 
     try {
       setIsLoading(true)
-      setSubmitAttempted(true)
-
-      // 显示登录进度
-      toast({
-        title: "正在登录...",
-        description: "请稍候，正在验证您的身份",
-        open: true,
+      await api.auth.emailLogin({
+        email,
+        password,
+        code,
+        loginType: loginType === "password" ? 1 : 2
       })
 
-      await api.auth.login({ email, password })
-
-      toast({
-        title: "登录成功",
-        description: "欢迎回来！正在跳转...",
-        open: true,
-      })
-
-      // 短暂延迟后跳转，让用户看到成功消息
-      setTimeout(() => {
-        const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/"
-        router.push(redirectTo)
-      }, 500)
-
+      toast({ title: "登录成功", description: "欢迎回来！" })
+      router.push("/")
     } catch (error) {
-      console.error("Login error:", error)
-      const errorMessage = error instanceof Error ? error.message : "请检查您的邮箱和密码"
-      
+      const errorInfo = getUserFriendlyError(error)
       toast({
-        title: "登录失败",
-        description: errorMessage.includes('超时') ? '网络连接超时，请检查网络后重试' : errorMessage,
+        title: errorInfo.title,
+        description: errorInfo.description,
         variant: "destructive",
-        open: true,
       })
-      
-      // 重置提交状态，允许重新尝试
-      setSubmitAttempted(false)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // 生成二维码
-  const generateQrCode = async (url: string) => {
-    try {
-      console.log('开始生成二维码，URL:', url)
-      const canvas = canvasRef.current
-      if (canvas) {
-        console.log('Canvas元素存在，开始生成二维码')
-        await QRCode.toCanvas(canvas, url, {
-          width: 200,
-          margin: 2,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF'
-          }
-        })
-        console.log('二维码生成成功')
-      } else {
-        console.error('Canvas元素不存在')
-      }
-    } catch (error) {
-      console.error('生成二维码失败:', error)
-    }
-  }
-
-  // 轮询检查登录状态
-  const startPolling = (state: string) => {
-    const interval = setInterval(async () => {
-      try {
-        // 若已登录则停止轮询
-        const { authManager } = await import('@/lib/auth')
-        if (authManager.isAuthenticated()) {
-          clearInterval(interval)
-          setPollingInterval(null)
-          return
-        }
-        // 检查localStorage中是否有登录成功的标记
-        const loginSuccess = localStorage.getItem(`wechat_login_${state}`)
-        if (loginSuccess) {
-          localStorage.removeItem(`wechat_login_${state}`)
-          setShowQrCode(false)
-          if (pollingInterval) {
-            clearInterval(pollingInterval)
-            setPollingInterval(null)
-          }
-          
-          toast({
-            title: "登录成功",
-            description: "微信扫码登录成功！正在跳转...",
-            open: true,
-          })
-          
-          setTimeout(() => {
-            const redirectTo = new URLSearchParams(window.location.search).get("redirect") || "/"
-            router.push(redirectTo)
-          }, 1000)
-        }
-      } catch (error) {
-        console.error('轮询检查登录状态失败:', error)
-      }
-    }, 2000)
-    
-    setPollingInterval(interval)
-    
-    // 5分钟后停止轮询
-    setTimeout(() => {
-      if (interval) {
-        clearInterval(interval)
-        setPollingInterval(null)
-      }
-    }, 300000)
-  }
-
-  const handleWechatLogin = async (force = false) => {
-    if (isWechatLoading || (!force && wechatLoginInProgress.current)) return
-
+  const handleWechatLogin = async () => {
+    if (isWechatLoading) return
     try {
       setIsWechatLoading(true)
-      wechatLoginInProgress.current = true
-      if (pollingInterval) { clearInterval(pollingInterval); setPollingInterval(null) }
       const { qrcodeId } = await api.frontAuth.generateQr('wxe6d828ae0245ab9c')
-      const cacheKey = `wxacode_${qrcodeId}`
-      const cached = sessionStorage.getItem(cacheKey)
-      if (cached) {
-        setWxacodeBase64(cached)
-      } else {
-        // 默认使用 trial (体验版) 以避免未发布导致报错，生产环境请设置 NEXT_PUBLIC_WXA_ENV=release
-        const env = (process.env.NEXT_PUBLIC_WXA_ENV || 'trial') as 'release' | 'trial' | 'develop'
-        const wxacode = await api.frontAuth.generateWxacode('wxe6d828ae0245ab9c', qrcodeId, 'pages/auth/login/login', 430, env as any)
-        setWxacodeBase64(wxacode.imageBase64)
-        sessionStorage.setItem(cacheKey, wxacode.imageBase64)
-      }
+      const env = (process.env.NEXT_PUBLIC_WXA_ENV || 'trial') as any
+      const wxacode = await api.frontAuth.generateWxacode('wxe6d828ae0245ab9c', qrcodeId, 'pages/auth/login/login', 430, env)
+      setWxacodeBase64(wxacode.imageBase64)
       setShowQrCode(true)
-      // 轮询二维码状态
+
       const interval = setInterval(async () => {
         try {
-          const { authManager } = await import('@/lib/auth')
-          if (authManager.isAuthenticated()) {
-            clearInterval(interval)
-            setPollingInterval(null)
-            return
-          }
           const res = await api.frontAuth.checkQr(qrcodeId)
           if (res.status === 2 && res.token) {
-            if (pollingInterval) { clearInterval(pollingInterval); setPollingInterval(null) }
+            clearInterval(interval)
             setShowQrCode(false)
-            // 构造用户对象并写入 authManager
             const user = {
               id: String(res.userInfo?.id || ''),
-              email: '',
               name: res.userInfo?.nickname || '用户',
+              email: '',
               avatar: res.userInfo?.avatarUrl,
               createdAt: new Date().toISOString(),
             }
-            const authData = { user, token: res.token, refreshToken: '' }
-            
-            // 动态导入 authManager 以避免循环依赖
             const { authManager } = await import('@/lib/auth')
-            authManager.setAuth(authData)
-            
-            toast({
-              title: "登录成功",
-              description: `欢迎回来，${user.name}！`,
-            })
-            
-            // 跳转回原页面或首页
-            const redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/'
-            router.push(redirectTo)
-          } else if (res.status === 3) {
-            // 已扫码，等待确认
+            authManager.setAuth({ user, token: res.token, refreshToken: '' })
+            toast({ title: '登录成功', description: `欢迎回来，${user.name}！` })
+            router.push('/')
           }
-        } catch (error) {
-          console.error('Check QR status failed:', error)
+        } catch (err) {
+          console.error('Check QR failed:', err)
         }
       }, 2000)
       setPollingInterval(interval)
     } catch (error) {
-      console.error('WeChat login error:', error)
-      const errorMessage = error instanceof Error ? error.message : '未知错误'
+      const errorInfo = getUserFriendlyError(error)
       toast({
-        title: "微信登录失败",
-        description: `错误详情: ${errorMessage}`,
-        variant: "destructive",
+        title: errorInfo.title,
+        description: errorInfo.description,
+        variant: 'destructive',
       })
     } finally {
       setIsWechatLoading(false)
     }
   }
 
-  // 移除自动开始微信轮询，改为手动触发
-
-  // 关闭二维码对话框
-  const handleCloseQrCode = () => {
-    setShowQrCode(false)
-    if (pollingInterval) {
-      clearInterval(pollingInterval)
-      setPollingInterval(null)
-    }
-  }
-
-  // 组件卸载时清理轮询
   useEffect(() => {
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval)
-      }
+      if (pollingInterval) clearInterval(pollingInterval)
     }
   }, [pollingInterval])
 
@@ -329,137 +148,154 @@ export default function LoginForm() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
       className="w-full max-w-md"
     >
-      <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center text-white">登录</CardTitle>
-          <CardDescription className="text-center text-white/70">登录您的账户以访问记忆库</CardDescription>
+      <Card className="relative overflow-hidden border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-violet-500 to-fuchsia-500" />
+
+        <CardHeader className="space-y-1 pb-2">
+          <CardTitle className="text-3xl font-bold text-center tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
+            欢迎回来
+          </CardTitle>
+          <CardDescription className="text-center text-gray-400">
+            登录以继续您的记忆优化旅程
+          </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">
-                邮箱
-              </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="输入您的邮箱"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="border-white/10 bg-white/5 pl-10 text-white placeholder-white/50"
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">
-                密码
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="输入您的密码"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="border-white/10 bg-white/5 pl-10 pr-10 text-white placeholder-white/50"
-                  disabled={isLoading}
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 text-white/50 hover:bg-transparent hover:text-white"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <Link href="/auth/forgot-password" className="text-sm text-cyan-400 hover:text-cyan-300 hover:underline">
-                忘记密码？
-              </Link>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-cyan-400 to-violet-500 text-black hover:from-cyan-500 hover:to-violet-600"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  登录中...
-                </>
-              ) : (
-                "登录"
-              )}
-            </Button>
-            
-            {/* 分隔线 */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-white/10" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-transparent px-2 text-white/50">或</span>
-              </div>
-            </div>
-            
-            {isClient && (
-              <div className="w-full border-white/10 bg白/5 text白 hover:bg白/10 px-4 py-3 rounded-md">
-                <div className="flex items中心 mb-3">
-                  <QrCode className="mr-2 h-4 w-4" />
-                  <span>使用微信扫码即可登录</span>
-                  {isWechatLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+
+        <CardContent className="pt-4">
+          <Tabs defaultValue="password" onValueChange={(v) => setLoginType(v as any)} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-white/5 p-1 rounded-xl mb-6">
+              <TabsTrigger value="password" className="rounded-lg data-[state=active]:bg-white/10 data-[state=active]:text-white">密码登录</TabsTrigger>
+              <TabsTrigger value="code" className="rounded-lg data-[state=active]:bg-white/10 data-[state=active]:text-white">验证码登录</TabsTrigger>
+            </TabsList>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2 group">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-300">邮箱</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-11 border-white/5 bg-white/5 pl-10 text-white rounded-xl focus:border-cyan-500/50"
+                    required
+                  />
                 </div>
-                <div className="flex flex-col items-center space-y-2">
-                  {wxacodeBase64 ? (
-                    <div className="rounded-lg" style={{ backgroundColor: '#ffffff', padding: 12 }}>
-                      <img
-                        src={`data:image/png;base64,${wxacodeBase64}`}
-                        alt="微信小程序码"
-                        style={{ width: 420, height: 'auto', display: 'block' }}
+              </div>
+
+              <TabsContent value="password" stroke-width="0" className="m-0 space-y-4">
+                <div className="space-y-2 group">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-300">密码</Label>
+                    <Link href="/auth/forgot-password?from=login" className="text-xs text-cyan-400 hover:underline">忘记密码？</Link>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-11 border-white/5 bg-white/5 pl-10 pr-10 text-white rounded-xl focus:border-cyan-500/50"
+                      required={loginType === "password"}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="code" stroke-width="0" className="m-0 space-y-4">
+                <div className="space-y-2 group">
+                  <Label htmlFor="code" className="text-sm font-medium text-gray-300">验证码</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <ShieldCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 group-focus-within:text-cyan-400 transition-colors" />
+                      <Input
+                        id="code"
+                        placeholder="6位验证码"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        className="h-11 border-white/5 bg-white/5 pl-10 text-white rounded-xl focus:border-cyan-500/50"
+                        maxLength={6}
+                        required={loginType === "code"}
                       />
                     </div>
-                  ) : (
-                    <span className="text白/60 text-sm">正在生成小程序码...</span>
-                  )}
-                  <span className="text白/70 text-xs">请用微信扫描上方小程序码完成登录</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-2 border-white/20 text-white hover:bg白/10"
-                    onClick={() => handleWechatLogin(true)}
-                    disabled={isWechatLoading}
-                  >
-                    刷新二维码
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleSendCode}
+                      disabled={countdown > 0 || isSendingCode}
+                      className="h-11 px-4 min-w-[100px] bg-white/10 hover:bg-white/20 text-white rounded-xl"
+                    >
+                      {isSendingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : countdown > 0 ? `${countdown}s` : "获取"}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
-            <div className="text-center text-sm text-white/70">
-              还没有账户？{" "}
-              <Link href="/auth/register" className="text-cyan-400 hover:text-cyan-300 hover:underline">
-                立即注册
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
+              </TabsContent>
+
+              <Button
+                type="submit"
+                className="w-full h-12 mt-4 bg-gradient-to-r from-cyan-500 to-violet-600 text-white font-semibold rounded-xl hover:from-cyan-400 hover:to-violet-500 shadow-lg shadow-cyan-500/20"
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {isLoading ? "登录中..." : "登录"}
+              </Button>
+            </form>
+          </Tabs>
+        </CardContent>
+
+        <CardFooter className="flex flex-col space-y-6 pt-2 pb-8">
+          <div className="relative w-full">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-white/5" /></div>
+            <div className="relative flex justify-center text-xs uppercase"><span className="bg-black/40 px-3 text-gray-500">更多方式</span></div>
+          </div>
+
+          <div className="flex flex-col gap-3 w-full">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 rounded-xl"
+              onClick={handleWechatLogin}
+            >
+              <QrCode className="h-4 w-4 mr-2 text-green-500" /> 微信扫码登录
+            </Button>
+          </div>
+
+          <p className="text-center text-sm text-gray-500">
+            还没有账户？{" "}
+            <Link href="/auth/register" className="text-white font-medium hover:text-cyan-400 transition-colors">立即注册</Link>
+          </p>
+        </CardFooter>
       </Card>
-      
-      
+
+      <Dialog open={showQrCode} onOpenChange={setShowQrCode}>
+        <DialogContent className="sm:max-w-md border-white/10 bg-black/90 backdrop-blur-2xl rounded-2xl">
+          <DialogHeader><DialogTitle className="text-xl font-bold text-center text-white">微信安全登录</DialogTitle></DialogHeader>
+          <div className="flex flex-col items-center space-y-6 py-6">
+            <div className="p-4 bg-white rounded-3xl">
+              {wxacodeBase64 ? (
+                <img src={`data:image/png;base64,${wxacodeBase64}`} alt="微信码" className="w-48 h-48" />
+              ) : (
+                <Loader2 className="h-48 w-48 animate-spin text-cyan-500" />
+              )}
+            </div>
+            <p className="text-gray-300 text-sm">请使用微信扫一扫</p>
+            <Button variant="ghost" size="sm" onClick={() => setShowQrCode(false)} className="text-gray-500">取消</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   )
 }

@@ -44,6 +44,7 @@ export default function DemoLoginBanner({ onLogin }: DemoLoginBannerProps) {
         title: "登录失败",
         description: error instanceof Error ? error.message : "演示登录失败",
         variant: "destructive",
+        open: true,
       })
     } finally {
       setIsLoading(false)
@@ -74,7 +75,7 @@ export default function DemoLoginBanner({ onLogin }: DemoLoginBannerProps) {
                 </div>
 
                 <div className="mb-4 space-y-2">
-                  <p className="text-sm text-white/80">快速体验小杏仁记忆搭子的功能，使用演示账户登录：</p>
+                  <p className="text-sm text-white/80">快速体验小杏仁的功能，使用演示账户登录：</p>
                   <div className="rounded-lg border border-white/10 bg-black/30 p-3">
                     <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
                       <div>

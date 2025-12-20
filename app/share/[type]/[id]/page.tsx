@@ -164,7 +164,7 @@ export default function SharePage() {
         <div className="container flex h-16 items-center justify-between px-4">
           <Link className="flex items-center space-x-2 font-bold" href="/">
             <Brain className="h-6 w-6 text-cyan-400" />
-            <span>小杏仁记忆搭子</span>
+            <span>小杏仁</span>
           </Link>
           <div className="flex items-center space-x-2">
             <Button variant="ghost" onClick={handleCopyLink}>
@@ -195,7 +195,7 @@ export default function SharePage() {
               返回
             </Button>
             <h1 className="text-3xl font-bold mb-2">分享的记忆辅助工具</h1>
-            <p className="text-white/70">来自小杏仁记忆搭子的分享内容</p>
+            <p className="text-white/70">来自小杏仁的分享内容</p>
           </div>
 
           <Card className="border-white/10 bg-black/50">
@@ -212,7 +212,7 @@ export default function SharePage() {
                 <p className="text-sm text-white/50 text-center">
                   想要创建自己的记忆辅助工具？
                   <Link href="/" className="ml-1 text-cyan-400 hover:underline">
-                    立即体验小杏仁记忆搭子
+                    立即体验小杏仁
                   </Link>
                 </p>
               </div>

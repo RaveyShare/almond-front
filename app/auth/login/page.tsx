@@ -1,6 +1,6 @@
 import { Brain } from "lucide-react"
 import Link from "next/link"
-import LoginWechat from "@/components/auth/login-wechat"
+import LoginForm from "@/components/auth/login-form"
 import AuthGuard from "@/components/auth/auth-guard"
 
 // Force dynamic rendering
@@ -24,8 +24,8 @@ export default function LoginPage() {
             <span className="text-xl">小杏仁</span>
           </Link>
 
-          {/* Login - WeChat Only */}
-          <LoginWechat />
+          {/* Login Form - Support both email and WeChat login */}
+          <LoginForm />
         </div>
       </div>
     </AuthGuard>
