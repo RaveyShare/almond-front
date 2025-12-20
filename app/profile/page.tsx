@@ -11,6 +11,7 @@ import { api } from "@/lib/api-config"
 import { authManager } from "@/lib/auth"
 import { toast } from "sonner"
 import { Loader2, Camera, ArrowLeft } from "lucide-react"
+import { SiteHeader } from "@/components/site-header"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -182,6 +183,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-black text-white p-4 flex items-center justify-center">
+      <SiteHeader />
       <Card className="w-full max-w-md border-white/10 bg-white/5 backdrop-blur-sm">
         <CardHeader>
           <div className="flex items-center gap-4">

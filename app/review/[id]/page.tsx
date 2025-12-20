@@ -24,6 +24,7 @@ import type { MemoryItem, MemoryAids } from "@/lib/types"
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
+import {SiteHeader} from "@/components/site-header";
 
 // 扩展 dayjs 插件
 dayjs.extend(utc)
@@ -260,17 +261,7 @@ export default function ReviewPage() {
   return (
     <AuthGuard requireAuth={true}>
       <div className="min-h-screen bg-black text-white">
-        <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-xl">
-          <div className="container flex h-16 items-center justify-between px-4">
-            <Link className="flex items-center space-x-2 font-bold" href="/">
-              <Brain className="h-6 w-6 text-cyan-400" />
-              <span>小杏仁</span>
-            </Link>
-            <Button variant="ghost" onClick={() => router.push("/memory-library")}>
-              返回记忆库
-            </Button>
-          </div>
-        </header>
+        <SiteHeader />
 
         <main className="container mx-auto px-4 pt-24 pb-12 grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">

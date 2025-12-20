@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <div className="container flex h-16 items-center justify-between px-4">
           <Link className="flex items-center space-x-2 font-bold" href="/">
             <Brain className="h-6 w-6 text-cyan-400" />
-            <span>小杏仁</span>
+            <span>小杏仁记忆搭子</span>
           </Link>
           <Link 
             href="/" 
@@ -43,8 +43,8 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-xl font-semibold mb-4 text-cyan-400">第一条 总则</h2>
                 <div className="space-y-3 text-white/90">
-                  <p>1.1 本隐私政策是您与小杏仁(almond)服务提供者之间关于您使用小杏仁(almond)服务时个人信息保护的协议。</p>
-                  <p>1.2 您应当在使用小杏仁服务之前认真阅读全部隐私政策内容。如您不同意本隐私政策的任意内容，请不要使用我们的服务。</p>
+                  <p>1.1 本隐私政策是您与小杏仁记忆搭子（MemBuddy）服务提供者之间关于您使用小杏仁记忆搭子（MemBuddy）服务时个人信息保护的协议。</p>
+                  <p>1.2 您应当在使用小杏仁记忆搭子服务之前认真阅读全部隐私政策内容。如您不同意本隐私政策的任意内容，请不要使用我们的服务。</p>
                   <p>1.3 您的使用行为或您以书面方式明示同意本政策，视为您已充分阅读、理解并接受本隐私政策的全部内容。</p>
                 </div>
               </section>

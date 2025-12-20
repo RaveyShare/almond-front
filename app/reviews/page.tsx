@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import AuthGuard from "@/components/auth/auth-guard"
+import { SiteHeader } from "@/components/site-header"
 
 export default function ReviewsPage() {
   const [activeTab, setActiveTab] = useState("week")
@@ -15,25 +16,7 @@ export default function ReviewsPage() {
     <Suspense fallback={<div className="flex h-screen items-center justify-center bg-black"><div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent" /></div>}>
       <AuthGuard requireAuth={true}>
       <div className="min-h-screen bg-black text-white">
-        <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-xl">
-          <div className="container flex h-16 items-center justify-between px-4">
-            <Link className="flex items-center space-x-2 font-bold" href="/">
-              <Brain className="h-6 w-6 text-cyan-400" />
-              <span>小杏仁</span>
-            </Link>
-            <div className="flex items-center space-x-4">
-              <Link className="text-sm hover:text-cyan-400" href="/plans">
-                计划
-              </Link>
-              <Link className="text-sm text-cyan-400" href="/reviews">
-                复盘
-              </Link>
-              <Link className="text-sm hover:text-cyan-400" href="/memory-library">
-                记忆库
-              </Link>
-            </div>
-          </div>
-        </header>
+        <SiteHeader />
 
         <main className="container mx-auto px-4 pt-24 pb-12">
           <div className="mb-8 flex items-center justify-between">
