@@ -32,7 +32,7 @@ import { useToast } from "@/components/ui/use-toast"
 import AuthGuard from "@/components/auth/auth-guard"
 import { formatInLocalTimezone } from "@/lib/date"
 import { requestNotificationPermission, scheduleReviewNotifications, clearAllScheduledNotifications } from "@/lib/notification"
-import { MemoryItem } from "@/lib/types"
+import { MemoryItem, AlmondItem } from "@/lib/types"
 import { SiteHeader } from "@/components/site-header"
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -168,6 +168,73 @@ export default function MemoryLibraryPage() {
     starredItems: memoryItems.filter((item) => item.starred).length,
   }
 
+  // 状态机状态映射函数
+  const getStateMachineStatus = (item: MemoryItem): string => {
+    // 基于用户的状态机流程：新杏仁 → 被理解 → 演化中 → 分支状态 → 复盘 → 沉淀/归档
+    if (item.status === 'new') {
+      return '🌱 新杏仁';
+    }
+    
+    if (item.status === 'understood') {
+      return '👀 被理解';
+    }
+    
+    if (item.status === 'evolving') {
+      return '🔄 演化中';
+    }
+    
+    // 记忆类型的特殊状态
+    if (item.status === 'memorizing') {
+      return '🧠 记忆';
+    }
+    
+    // 复习/完成/推进状态
+    if (item.status === 'reviewing_cycle') {
+      return '🔁 复习';
+    }
+    
+    if (item.status === 'completed') {
+      return '✔ 完成';
+    }
+    
+    if (item.status === 'promoting') {
+      return '📈 推进';
+    }
+    
+    // 复盘状态
+    if (item.status === 'reflecting') {
+      return '🪞 复盘';
+    }
+    
+    // 沉淀/归档状态
+    if (item.status === 'precipitating' || item.status === 'archived') {
+      return '🌰 沉淀/归档';
+    }
+    
+    // 默认状态处理
+    if (item.status === 'todo') {
+      return '待办';
+    }
+    
+    if (item.status === 'doing') {
+      return '进行中';
+    }
+    
+    if (item.status === 'done') {
+      return '已完成';
+    }
+    
+    if (item.status === 'reviewing') {
+      return '复习中';
+    }
+    
+    if (item.status === 'mastered') {
+      return '已掌握';
+    }
+    
+    return '未知状态';
+  };
+
   const getRelativeTimeText = (reviewDate?: string | null): string => {
     if (!reviewDate) return "无计划"
     
@@ -179,7 +246,7 @@ export default function MemoryLibraryPage() {
     // 计算时间差（毫秒）
     const diffMillis = reviewTime.diff(now)
     
-    if (diffMillis <= 0) return "已到期"
+    if (diffMillis <= 0) return "现在"
     
     // 计算时间差（分钟、小时、天）
     const diffMinutes = Math.floor(diffMillis / (1000 * 60))
@@ -270,7 +337,7 @@ export default function MemoryLibraryPage() {
                     </div>
                     <div className="mt-4 flex items-center justify-between text-xs text-white/60">
                       <div className="flex items-center text-sm text-cyan-400"><Calendar className="mr-2 h-3 w-3" />{item.next_review_date ? formatInLocalTimezone(item.next_review_date, "YYYY-MM-DD HH:mm") : "无计划"}</div>
-                      <div className="flex items-center text-sm"><Clock className="mr-1 h-3 w-3" />{getRelativeTimeText(item.next_review_date)}</div>
+                      <div className="flex items-center text-sm"><Clock className="mr-1 h-3 w-3" />{getStateMachineStatus(item)}</div>
                     </div>
                     <div className="mt-4 flex gap-2">
                       <Button size="sm" className="flex-1 bg-cyan-400 text-black hover:bg-cyan-500" onClick={() => handleStartReview(item)}>开始复习</Button>

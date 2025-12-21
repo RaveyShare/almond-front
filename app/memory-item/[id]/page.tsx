@@ -25,7 +25,7 @@ import AuthGuard from "@/components/auth/auth-guard"
 import { formatInLocalTimezone } from "@/lib/date"
 import MemoryAidsViewer from "@/components/MemoryAidsViewer"
 import ShareDialog from "@/components/share-dialog"
-import type { MemoryItem } from "@/lib/types"
+import type { MemoryItem, AlmondItem } from "@/lib/types"
 import { SiteHeader } from "@/components/site-header"
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -37,6 +37,73 @@ dayjs.extend(timezone)
 
 
 const MemoryStatusCard = ({ item, onStartReview }: { item: MemoryItem, onStartReview: () => void }) => {
+  // 状态机状态映射函数
+  const getStateMachineStatus = (item: MemoryItem): string => {
+    // 基于用户的状态机流程：新杏仁 → 被理解 → 演化中 → 分支状态 → 复盘 → 沉淀/归档
+    if (item.status === 'new') {
+      return '🌱 新杏仁';
+    }
+    
+    if (item.status === 'understood') {
+      return '👀 被理解';
+    }
+    
+    if (item.status === 'evolving') {
+      return '🔄 演化中';
+    }
+    
+    // 记忆类型的特殊状态
+    if (item.status === 'memorizing') {
+      return '🧠 记忆';
+    }
+    
+    // 复习/完成/推进状态
+    if (item.status === 'reviewing_cycle') {
+      return '🔁 复习';
+    }
+    
+    if (item.status === 'completed') {
+      return '✔ 完成';
+    }
+    
+    if (item.status === 'promoting') {
+      return '📈 推进';
+    }
+    
+    // 复盘状态
+    if (item.status === 'reflecting') {
+      return '🪞 复盘';
+    }
+    
+    // 沉淀/归档状态
+    if (item.status === 'precipitating' || item.status === 'archived') {
+      return '🌰 沉淀/归档';
+    }
+    
+    // 默认状态处理
+    if (item.status === 'todo') {
+      return '待办';
+    }
+    
+    if (item.status === 'doing') {
+      return '进行中';
+    }
+    
+    if (item.status === 'done') {
+      return '已完成';
+    }
+    
+    if (item.status === 'reviewing') {
+      return '复习中';
+    }
+    
+    if (item.status === 'mastered') {
+      return '已掌握';
+    }
+    
+    return '未知状态';
+  };
+
   const getRelativeTimeText = (reviewDate?: string | null): string => {
     if (!reviewDate) return "无计划"
     
@@ -48,7 +115,7 @@ const MemoryStatusCard = ({ item, onStartReview }: { item: MemoryItem, onStartRe
     // 计算时间差（毫秒）
     const diffMillis = reviewTime.diff(now)
     
-    if (diffMillis <= 0) return "已到期"
+    if (diffMillis <= 0) return "现在"
     
     // 计算时间差（分钟、小时、天）
     const diffMinutes = Math.floor(diffMillis / (1000 * 60))
@@ -85,7 +152,7 @@ const MemoryStatusCard = ({ item, onStartReview }: { item: MemoryItem, onStartRe
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">剩余时间</span>
-          <span className="font-medium text-yellow-500">{getRelativeTimeText(item.next_review_date)}</span>
+          <span className="font-medium text-yellow-500">{getStateMachineStatus(item)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-400">掌握度</span>

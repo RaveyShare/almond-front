@@ -71,7 +71,7 @@ export interface MemoryAids {
 
 // Unified Item Type
 export type ItemType = 'memory' | 'task' | 'plan';
-export type ItemStatus = 'todo' | 'doing' | 'done' | 'archived' | 'new' | 'reviewing' | 'mastered';
+export type ItemStatus = 'todo' | 'doing' | 'done' | 'archived' | 'new' | 'reviewing' | 'mastered' | 'understood' | 'evolving' | 'memorizing' | 'acting' | 'targeting' | 'reviewing_cycle' | 'completed' | 'promoting' | 'reflecting' | 'precipitating';
 
 export interface BaseItem {
   id: string;

@@ -4,22 +4,22 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Brain, Mic, Loader2, Calendar, ArrowRight, Eye, Share2, ListTodo } from "lucide-react"
+import { Brain, Mic, Loader2, Calendar, ArrowRight, ListTodo } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Card, CardContent } from "@/components/ui/card"
 import { api } from "@/lib/api-config"
 import { toast } from "sonner"
 import { authManager } from "@/lib/auth"
-import MemoryAidsViewer from "@/components/MemoryAidsViewer"
 import ShareDialog from "@/components/share-dialog"
 import DecomposeModal from "@/components/decompose-modal"
-import LoadingSpinner from "@/components/loading-spinner"
 import MissionVision from "@/components/mission-vision"
+import { Almond3DCardGallery } from "@/components/almond-3d-card"
+import { AlmondCardDetail } from "@/components/almond-card-detail"
+
 import { formatInLocalTimezone } from "@/lib/date"
-import type { MemoryAids, AlmondItem } from "@/lib/types"
+import type { AlmondItem } from "@/lib/types"
 import { SiteHeader } from "@/components/site-header"
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -45,11 +45,6 @@ export default function Home() {
   const [almondItems, setAlmondItems] = useState<AlmondItem[]>([])
   const [loadingAlmondItems, setLoadingAlmondItems] = useState(false)
 
-  // Generated content states
-  const [generatedContent, setGeneratedContent] = useState<string>("")
-  const [generatedAids, setGeneratedAids] = useState<MemoryAids | null>(null)
-  const [showGeneratedContent, setShowGeneratedContent] = useState(false)
-
   // Share dialog states
   const [shareType, setShareType] = useState<string | null>(null)
   const [shareContent, setShareContent] = useState<any>(null)
@@ -59,9 +54,9 @@ export default function Home() {
   const [decomposeModalOpen, setDecomposeModalOpen] = useState(false)
   const [selectedTaskForDecompose, setSelectedTaskForDecompose] = useState<{ id: string, title: string } | null>(null)
 
-  // Success dialog states
-  const [successDialogOpen, setSuccessDialogOpen] = useState(false)
-  const [isFirstAlmond, setIsFirstAlmond] = useState(false)
+  // 3D卡片状态
+  const [selectedAlmondForDetail, setSelectedAlmondForDetail] = useState<AlmondItem | null>(null)
+  const [show3DCards, setShow3DCards] = useState(false)
 
   const router = useRouter()
 
@@ -101,6 +96,7 @@ export default function Home() {
         level: 'inbox',
         updated_at: item.created_at
       }))
+
       setAlmondItems(almondItems.slice(0, 5))
     } catch (error) {
       console.error("Failed to load almond items:", error)
@@ -125,7 +121,6 @@ export default function Home() {
     if (!inputValue.trim() || !isAuthenticated) return
 
     setIsLoading(true)
-    setShowGeneratedContent(false)
     const contentToSave = inputValue
     setInputValue("") // 为了更好的用户体验，立即清空输入框
 
@@ -143,9 +138,21 @@ export default function Home() {
         } 
       })
 
-      // 显示成功对话框
-      setIsFirstAlmond(isFirst)
-      setSuccessDialogOpen(true)
+      // 显示成功提示
+
+      if (isFirst) {
+        toast("🌱 第一颗杏仁已种下", {
+          description: "以后有任何想法都可以放进来",
+          duration: 3000,
+          position: "top-center"
+        })
+      } else {
+        toast("🌰 杏仁已保存", {
+          description: "随时可以继续完善",
+          duration: 3000,
+          position: "top-center"
+        })
+      }
 
       // 使用新项目乐观地更新UI
       const almondItem: AlmondItem = {
@@ -164,11 +171,6 @@ export default function Home() {
       (async () => {
         try {
           const memoryAids = await api.generateMemoryAids(savedItem.content)
-
-          // 当AI内容准备好后，显示生成的内容部分
-          setGeneratedContent(savedItem.content)
-          setGeneratedAids(memoryAids)
-          setShowGeneratedContent(true)
 
           const updatedItem = await api.updateMemoryItemAids(savedItem.id, memoryAids)
 
@@ -231,10 +233,93 @@ export default function Home() {
     setShareDialogOpen(true)
   }
 
-  const handleViewMemoryAids = () => {
-    // 创建一个临时的记忆项目并跳转到记忆库
-    router.push("/memory-library")
+  // 3D卡片处理函数
+  const handle3DCardClick = (item: AlmondItem) => {
+    setSelectedAlmondForDetail(item)
   }
+
+  const handleCloseDetail = () => {
+    setSelectedAlmondForDetail(null)
+  }
+
+  const toggle3DView = () => {
+    setShow3DCards(!show3DCards)
+  }
+
+  // 状态机状态映射函数
+  const getStateMachineStatus = (item: AlmondItem): string => {
+    // 基于用户的状态机流程：新杏仁 → 被理解 → 演化中 → 分支状态 → 复盘 → 沉淀/归档
+    if (item.status === 'new') {
+      return '🌱 新杏仁';
+    }
+    
+    if (item.status === 'understood') {
+      return '👀 被理解';
+    }
+    
+    if (item.status === 'evolving') {
+      return '🔄 演化中';
+    }
+    
+    // 根据杏仁类型进行分支判断
+    if (item.almondType === 'memory' && item.status === 'memorizing') {
+      return '🧠 记忆';
+    }
+    
+    if (item.almondType === 'task' && item.status === 'acting') {
+      return '✅ 行动';
+    }
+    
+    if (item.almondType === 'goal' && item.status === 'targeting') {
+      return '🎯 目标';
+    }
+    
+    // 复习/完成/推进状态
+    if (item.status === 'reviewing_cycle') {
+      return '🔁 复习';
+    }
+    
+    if (item.status === 'completed') {
+      return '✔ 完成';
+    }
+    
+    if (item.status === 'promoting') {
+      return '📈 推进';
+    }
+    
+    // 复盘状态
+    if (item.status === 'reflecting') {
+      return '🪞 复盘';
+    }
+    
+    // 沉淀/归档状态
+    if (item.status === 'precipitating' || item.status === 'archived') {
+      return '🌰 沉淀/归档';
+    }
+    
+    // 默认状态处理
+    if (item.status === 'todo') {
+      return '待办';
+    }
+    
+    if (item.status === 'doing') {
+      return '进行中';
+    }
+    
+    if (item.status === 'done') {
+      return '已完成';
+    }
+    
+    if (item.status === 'reviewing') {
+      return '复习中';
+    }
+    
+    if (item.status === 'mastered') {
+      return '已掌握';
+    }
+    
+    return '未知状态';
+  };
 
   const getRelativeTimeText = (reviewDate?: string | null): string => {
     if (!reviewDate) {
@@ -250,7 +335,7 @@ export default function Home() {
     const diffMillis = reviewTime.diff(now);
 
     if (diffMillis <= 0) {
-      return "已到期";
+      return "现在";
     }
 
     // 计算时间差（秒、分钟、小时、天）
@@ -370,71 +455,6 @@ export default function Home() {
               )}
             </motion.div>
 
-            <AnimatePresence>
-              {isLoading && (
-                  <motion.div
-                      initial={{opacity: 0, y: 20}}
-                      animate={{opacity: 1, y: 0}}
-                      exit={{opacity: 0, y: -20}}
-                      transition={{duration: 0.5}}
-                      className="mx-auto mt-8 max-w-2xl"
-                  >
-                    <LoadingSpinner message="AI 正在生成杏仁辅助工具..."/>
-                  </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-              {showGeneratedContent && !isLoading && generatedAids && (
-                  <motion.div
-                      initial={{opacity: 0, y: 20}}
-                      animate={{opacity: 1, y: 0}}
-                      exit={{opacity: 0, y: -20}}
-                      transition={{duration: 0.5}}
-                      className="mx-auto mt-8 max-w-4xl"
-                  >
-                    <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-xl text-cyan-400">生成的杏仁辅助工具</CardTitle>
-                          <div className="flex space-x-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-cyan-400 text-cyan-400 hover:bg-cyan-400/10 bg-transparent"
-                                onClick={handleViewMemoryAids}
-                            >
-                              <Eye className="mr-2 h-4 w-4"/>
-                              详细查看
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-violet-400 text-violet-400 hover:bg-violet-400/10 bg-transparent"
-                                onClick={() => handleShare("mindmap", {
-                                  title: "记忆辅助工具",
-                                  data: generatedAids.mindMap
-                                })}
-                            >
-                              <Share2 className="mr-2 h-4 w-4"/>
-                              分享
-                            </Button>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="mb-6 rounded-lg border border-white/10 bg-black/50 p-4">
-                          <h3 className="mb-2 text-sm font-medium text-white/70">原始内容</h3>
-                          <p className="text-white">{generatedContent}</p>
-                        </div>
-
-                        <MemoryAidsViewer aids={generatedAids} onShare={handleShare}/>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-              )}
-            </AnimatePresence>
-
 
 
 
@@ -449,13 +469,23 @@ export default function Home() {
                     <CardContent className="p-6">
                       <div className="mb-4 flex items-center justify-between">
                         <h3 className="text-lg font-medium text-white">最近杏仁</h3>
-                        <Link
-                            href="/memory-library"
-                            className="flex items-center text-sm text-cyan-400 hover:text-cyan-300"
-                        >
-                          查看全部
-                          <ArrowRight className="ml-1 h-3 w-3"/>
-                        </Link>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-cyan-400 text-cyan-400 hover:bg-cyan-400/10 bg-transparent"
+                            onClick={toggle3DView}
+                          >
+                            {show3DCards ? '列表视图' : '3D视图'}
+                          </Button>
+                          <Link
+                              href="/memory-library"
+                              className="flex items-center text-sm text-cyan-400 hover:text-cyan-300"
+                          >
+                            查看全部
+                            <ArrowRight className="ml-1 h-3 w-3"/>
+                          </Link>
+                        </div>
                       </div>
 
                       {loadingAlmondItems ? (
@@ -463,78 +493,87 @@ export default function Home() {
                             <Loader2 className="h-6 w-6 animate-spin text-cyan-400"/>
                           </div>
                       ) : almondItems.length > 0 ? (
-                          <div className="space-y-3">
-                            {almondItems.map((item, index) => (
-                                <motion.div
-                                    key={item.id}
-                                    initial={{opacity: 0, x: -20}}
-                                    animate={{opacity: 1, x: 0}}
-                                    transition={{duration: 0.5, delay: index * 0.1}}
-                                    className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors cursor-pointer"
-                                    onClick={() => handleAlmondItemClick(item)}
-                                >
-                                  <div className="flex-1">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center space-x-2">
-                                        {item.almondType === 'task' && (
-                                            <div className="rounded-full border border-white/30 p-1">
-                                              <ListTodo className="h-3 w-3 text-cyan-400"/>
-                                            </div>
-                                        )}
-                                        {item.almondType === 'memory' && (
-                                            <div className="rounded-full border border-white/30 p-1">
-                                              <Brain className="h-3 w-3 text-cyan-400"/>
-                                            </div>
-                                        )}
-                                        {item.almondType === 'almond' && (
-                                            <div className="rounded-full border border-white/30 p-1">
-                                              <Brain className="h-3 w-3 text-cyan-400"/>
-                                            </div>
-                                        )}
-                                        <h4 className={`font-medium text-white ${item.status === 'done' ? 'line-through text-white/50' : ''}`}>{item.content.substring(0, 20)}...</h4>
-                                        {/* Add starred logic if needed */}
+                        <>
+                          {show3DCards ? (
+                            <Almond3DCardGallery 
+                              items={almondItems} 
+                              onCardClick={handle3DCardClick}
+                            />
+                          ) : (
+                            <div className="space-y-3">
+                              {almondItems.map((item, index) => (
+                                  <motion.div
+                                      key={item.id}
+                                      initial={{opacity: 0, x: -20}}
+                                      animate={{opacity: 1, x: 0}}
+                                      transition={{duration: 0.5, delay: index * 0.1}}
+                                      className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition-colors cursor-pointer"
+                                      onClick={() => handleAlmondItemClick(item)}
+                                  >
+                                    <div className="flex-1">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-2">
+                                          {item.almondType === 'task' && (
+                                              <div className="rounded-full border border-white/30 p-1">
+                                                <ListTodo className="h-3 w-3 text-cyan-400"/>
+                                              </div>
+                                          )}
+                                          {item.almondType === 'memory' && (
+                                              <div className="rounded-full border border-white/30 p-1">
+                                                <Brain className="h-3 w-3 text-cyan-400"/>
+                                              </div>
+                                          )}
+                                          {item.almondType === 'almond' && (
+                                              <div className="rounded-full border border-white/30 p-1">
+                                                <Brain className="h-3 w-3 text-cyan-400"/>
+                                              </div>
+                                          )}
+                                          <h4 className={`font-medium text-white ${item.status === 'done' ? 'line-through text-white/50' : ''}`}>{item.content.substring(0, 20)}...</h4>
+                                          {/* Add starred logic if needed */}
+                                        </div>
+                                        {/* Add category logic if needed */}
                                       </div>
-                                      {/* Add category logic if needed */}
-                                    </div>
-                                    <p className="text-sm text-white/70 line-clamp-1 mt-1">{item.content}</p>
-                                    <div className="mt-2 flex items-center justify-between text-white/70 text-xs">
-                                      {item.almondType === 'memory' || item.next_review_date ? (
-                                          <>
-                                            <div className="flex items-center text-cyan-400">
-                                              <Calendar className="mr-1.5 h-3 w-3"/>
-                                              <span>{item.next_review_date ? formatInLocalTimezone(item.next_review_date, "YYYY-MM-DD HH:mm") : "无计划"}</span>
+                                      <p className="text-sm text-white/70 line-clamp-1 mt-1">{item.content}</p>
+                                      <div className="mt-2 flex items-center justify-between text-white/70 text-xs">
+                                        {item.almondType === 'memory' || item.next_review_date ? (
+                                            <>
+                                              <div className="flex items-center text-cyan-400">
+                                                <Calendar className="mr-1.5 h-3 w-3"/>
+                                                <span>{item.next_review_date ? formatInLocalTimezone(item.next_review_date, "YYYY-MM-DD HH:mm") : "无计划"}</span>
+                                              </div>
+                                              <p className="text-white/50">{getStateMachineStatus(item)}</p>
+                                            </>
+                                        ) : item.almondType === 'task' ? (
+                                            <div className="flex items-center justify-between w-full">
+                                              <div className="flex items-center space-x-2 text-cyan-400">
+                                                <span className="bg-white/10 px-2 py-0.5 rounded text-xs">待办</span>
+                                              </div>
+                                              <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-7 px-2 text-cyan-400 hover:text-cyan-300 hover:bg-white/5"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAlmondItemClick(item);
+                                                  }}
+                                              >
+                                                <Brain className="h-3.5 w-3.5 mr-1"/>
+                                                <span className="text-xs">AI 拆解</span>
+                                              </Button>
                                             </div>
-                                            <p className="text-white/50">{getRelativeTimeText(item.next_review_date)}</p>
-                                          </>
-                                      ) : item.almondType === 'task' ? (
-                                          <div className="flex items-center justify-between w-full">
+                                        ) : (
                                             <div className="flex items-center space-x-2 text-cyan-400">
-                                              <span className="bg-white/10 px-2 py-0.5 rounded text-xs">待办</span>
+                                              <span className="bg-white/10 px-2 py-0.5 rounded text-xs">杏仁</span>
+                                              <p className="text-white/50">等待AI分析</p>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-7 px-2 text-cyan-400 hover:text-cyan-300 hover:bg-white/5"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleAlmondItemClick(item);
-                                                }}
-                                            >
-                                              <Brain className="h-3.5 w-3.5 mr-1"/>
-                                              <span className="text-xs">AI 拆解</span>
-                                            </Button>
-                                          </div>
-                                      ) : (
-                                          <div className="flex items-center space-x-2 text-cyan-400">
-                                            <span className="bg-white/10 px-2 py-0.5 rounded text-xs">杏仁</span>
-                                            <p className="text-white/50">等待AI分析</p>
-                                          </div>
-                                      )}
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                </motion.div>
-                            ))}
-                          </div>
+                                  </motion.div>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       ) : (
                           <div className="py-8 text-center">
                             <Brain className="mx-auto mb-2 h-8 w-8 text-white/30"/>
@@ -579,61 +618,21 @@ export default function Home() {
 
       <ShareDialog open={shareDialogOpen} onOpenChange={setShareDialogOpen} type={shareType} content={shareContent} />
 
-      <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-black/90 border-white/10 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              {isFirstAlmond ? (
-                <>
-                  <span className="text-2xl">🌱</span> 你已经放下了第一颗杏仁
-                </>
-              ) : (
-                <>
-                  <span className="text-2xl">🌰</span> 我记住了这颗杏仁
-                </>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 text-white/80 space-y-4">
-            {isFirstAlmond ? (
-              <div className="space-y-4">
-                <p>
-                  以后，每当你不知道<br />
-                  「该不该记」「怎么做」「怎么想」
-                </p>
-                <p>都可以先放进来。</p>
-                <p>我会慢慢帮你理清。</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p>它现在还不需要被定义。</p>
-                <p>等你准备好，我们可以一起看看：</p>
-                <ul className="list-disc pl-5 space-y-2 text-white/70">
-                  <li>要不要把它变成一个待办？</li>
-                  <li>还是一段需要记住的内容？</li>
-                  <li>或者，它其实是一个目标？</li>
-                </ul>
-                <p className="pt-2">你随时可以回来找我。</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button 
-              className="w-full bg-gradient-to-r from-cyan-400 to-violet-500 text-black hover:from-cyan-500 hover:to-violet-600"
-              onClick={() => setSuccessDialogOpen(false)}
-            >
-              我知道了
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {selectedTaskForDecompose && (
         <DecomposeModal
           open={decomposeModalOpen}
           onOpenChange={setDecomposeModalOpen}
           taskId={selectedTaskForDecompose.id}
           taskTitle={selectedTaskForDecompose.title}
+        />
+      )}
+
+      {selectedAlmondForDetail && (
+        <AlmondCardDetail
+          item={selectedAlmondForDetail}
+          isOpen={!!selectedAlmondForDetail}
+          onClose={handleCloseDetail}
+          onShare={handleShare}
         />
       )}
     </div>
