@@ -96,6 +96,59 @@ export const api = {
       if (res.code !== 0 && res.code !== 200) throw new Error('查询二维码状态失败')
       return res.data
     },
+    sendEmailCode: async (email: string): Promise<boolean> => {
+      const response = await fetchWithTimeout(`/front/auth/email/send-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      }, 8000)
+      const res = await handleResponse<{ code: number; data: boolean }>(response)
+      const ok = unwrapHttpResult(res)
+      return !!ok
+    },
+    loginByEmailCode: async (email: string, code: string): Promise<AuthResponse> => {
+      const response = await fetchWithTimeout(`/front/auth/email/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      }, 8000)
+      const res = await handleResponse<{ code: number; data: any }>(response)
+      const data = unwrapHttpResult(res) as any
+      const token: string = data.token || data.access_token || ''
+      if (!token) throw new Error('登录失败，未返回令牌')
+      let user: any = data.user || data.userInfo || {}
+      if (!user || !user.id) {
+        try {
+          const payload: any = jwtDecode(token)
+          user = {
+            id: String(payload.sub || payload.userId || payload.uid || ''),
+            email: String(payload.email || email || ''),
+            name: String(payload.full_name || payload.username || payload.nickname || '用户'),
+            avatar: payload.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${String(payload.sub || payload.userId || email)}`,
+            createdAt: new Date().toISOString(),
+          }
+        } catch {
+          user = {
+            id: String(Date.now()),
+            email,
+            name: '用户',
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+            createdAt: new Date().toISOString(),
+          }
+        }
+      } else {
+        user = {
+          id: String(user.id),
+          email: String(user.email || email || ''),
+          name: String(user.full_name || user.name || user.nickname || '用户'),
+          avatar: user.avatar || user.wechat_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${String(user.id)}`,
+          createdAt: new Date().toISOString(),
+        }
+      }
+      const authData = { user, token, refreshToken: String(data.refreshToken || '') }
+      authManager.setAuth(authData)
+      return authData
+    },
   },
   // Authentication endpoints
   auth: {

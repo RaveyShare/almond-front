@@ -1,0 +1,362 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap'); */
+
+/* ===================================
+ * 小杏仁设计系统 - Geometric Style
+ * =================================== */
+
+/* 基础变量系统 */
+:root {
+  /* 字体系统 */
+  --font-primary: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+
+  /* 色彩系统 - 几何背景风格 */
+  --color-primary: 180 100% 50%;        /* Cyan 400 */
+  --color-secondary: 262 80% 58%;       /* Violet 500 */
+  --color-accent: 142 76% 50%;          /* Green 500 */
+  
+  /* 中性色 */
+  --color-white: 0 0% 100%;
+  --color-black: 0 0% 0%;
+  --color-gray-50: 210 20% 98%;
+  --color-gray-100: 210 16% 93%;
+  --color-gray-200: 210 12% 86%;
+  --color-gray-300: 210 8% 68%;
+  --color-gray-400: 210 6% 52%;
+  --color-gray-500: 210 4% 38%;
+  --color-gray-600: 210 6% 28%;
+  --color-gray-700: 210 8% 20%;
+  --color-gray-800: 210 12% 14%;
+  --color-gray-900: 210 16% 8%;
+  
+  /* 背景色 */
+  --color-bg-primary: 0 0% 0%;        /* 纯黑背景 */
+  --color-bg-secondary: 210 16% 8%;   /* 深灰背景 */
+  --color-bg-tertiary: 210 12% 14%;   /* 中灰背景 */
+  
+  /* 文字色 */
+  --color-text-primary: 0 0% 100%;    /* 纯白文字 */
+  --color-text-secondary: 0 0% 80%;   /* 浅灰文字 */
+  --color-text-tertiary: 0 0% 60%;    /* 中灰文字 */
+  --color-text-muted: 0 0% 40%;       /* 暗灰文字 */
+  
+  /* 状态色 */
+  --color-success: 142 76% 50%;
+  --color-warning: 38 92% 50%;
+  --color-error: 0 84% 60%;
+  --color-info: 199 89% 48%;
+
+  /* 渐变系统 */
+  --gradient-primary: linear-gradient(135deg, hsl(var(--color-primary)), hsl(var(--color-secondary)));
+  --gradient-secondary: linear-gradient(135deg, hsl(var(--color-secondary)), hsl(var(--color-accent)));
+  --gradient-accent: linear-gradient(135deg, hsl(var(--color-accent)), hsl(var(--color-primary)));
+  --gradient-dark: linear-gradient(135deg, hsl(var(--color-gray-900)), hsl(var(--color-black)));
+  --gradient-light: linear-gradient(135deg, hsl(var(--color-gray-100)), hsl(var(--color-white)));
+
+  /* 阴影系统 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 20px rgba(6, 182, 212, 0.3);
+
+  /* 圆角系统 */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --radius-full: 9999px;
+
+  /* 间距系统 */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+
+  /* 动画系统 */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 几何背景动画 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(180deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes geometric-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 基础样式重置 */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-primary);
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: hsl(var(--color-bg-primary));
+  color: hsl(var(--color-text-primary));
+  font-family: var(--font-primary);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* 几何背景组件 */
+.geometric-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.geometric-shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: float 6s ease-in-out infinite;
+}
+
+.geometric-shape-1 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, hsl(var(--color-primary) / 0.3), hsl(var(--color-secondary) / 0.3));
+  top: 20%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.geometric-shape-2 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, hsl(var(--color-secondary) / 0.2), hsl(var(--color-accent) / 0.2));
+  top: 60%;
+  right: 15%;
+  animation-delay: 2s;
+}
+
+.geometric-shape-3 {
+  width: 250px;
+  height: 250px;
+  background: linear-gradient(135deg, hsl(var(--color-accent) / 0.25), hsl(var(--color-primary) / 0.25));
+  bottom: 20%;
+  left: 20%;
+  animation-delay: 4s;
+}
+
+/* 玻璃拟态效果 */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+}
+
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 渐变文字 */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 按钮样式 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: hsl(var(--color-black));
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl), var(--shadow-glow);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: hsl(var(--color-text-primary));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 输入框样式 */
+.input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  color: hsl(var(--color-text-primary));
+  font-size: 0.875rem;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.input::placeholder {
+  color: hsl(var(--color-text-muted));
+}
+
+.input:focus {
+  outline: none;
+  border-color: hsl(var(--color-primary));
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+/* 卡片样式 */
+.card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 工具类 */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* 响应式工具类 */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 0.75rem;
+  }
+  
+  .geometric-shape {
+    filter: blur(20px);
+  }
+  
+  .geometric-shape-1,
+  .geometric-shape-2,
+  .geometric-shape-3 {
+    width: 200px;
+    height: 200px;
+  }
+}

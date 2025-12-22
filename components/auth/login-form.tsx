@@ -8,6 +8,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
@@ -17,6 +18,8 @@ import QRCode from "qrcode"
 export default function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [emailCode, setEmailCode] = useState("")
+  const [loginMethod, setLoginMethod] = useState<"password" | "emailCode">("password")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [submitAttempted, setSubmitAttempted] = useState(false)
@@ -94,10 +97,10 @@ export default function LoginForm() {
       return
     }
 
-    if (!email || !password) {
+    if (!email || (loginMethod === "password" ? !password : !emailCode)) {
       toast({
         title: "请填写所有字段",
-        description: "邮箱和密码都是必填项",
+        description: loginMethod === "password" ? "邮箱和密码都是必填项" : "邮箱和验证码都是必填项",
         variant: "destructive",
       })
       return
@@ -125,7 +128,11 @@ export default function LoginForm() {
         open: true,
       })
 
-      await api.auth.login({ email, password })
+      if (loginMethod === "password") {
+        await api.auth.login({ email, password })
+      } else {
+        await api.frontAuth.loginByEmailCode(email, emailCode)
+      }
 
       toast({
         title: "登录成功",
@@ -152,6 +159,36 @@ export default function LoginForm() {
       
       // 重置提交状态，允许重新尝试
       setSubmitAttempted(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSendEmailCode = async () => {
+    if (!email) {
+      toast({
+        title: "请输入邮箱",
+        description: "发送验证码前请填写邮箱地址",
+        variant: "destructive",
+      })
+      return
+    }
+    try {
+      setIsLoading(true)
+      const ok = await api.frontAuth.sendEmailCode(email)
+      toast({
+        title: ok ? "验证码已发送" : "发送失败",
+        description: ok ? "请查看您的邮箱并输入验证码" : "请稍后重试",
+        open: true,
+        variant: ok ? undefined : "destructive",
+      })
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "发送失败"
+      toast({
+        title: "发送失败",
+        description: msg,
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -349,35 +386,66 @@ export default function LoginForm() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">
-                密码
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="输入您的密码"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="border-white/10 bg-white/5 pl-10 pr-10 text-white placeholder-white/50"
-                  disabled={isLoading}
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 text-white/50 hover:bg-transparent hover:text-white"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+            {loginMethod === "password" ? (
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-white">
+                  密码
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="输入您的密码"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="border-white/10 bg-white/5 pl-10 pr-10 text-white placeholder-white/50"
+                    disabled={isLoading}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 text-white/50 hover:bg-transparent hover:text-white"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-white">邮箱验证码</Label>
+                <div className="flex items-center gap-2">
+                  <InputOTP maxLength={6} value={emailCode} onChange={setEmailCode}>
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                  <Button type="button" variant="secondary" onClick={handleSendEmailCode} disabled={isLoading}>
+                    发送验证码
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
+              <div className="text-sm text-white/70">
+                {loginMethod === "password" ? "使用邮箱验证码登录？" : "使用密码登录？"}{" "}
+                <button
+                  type="button"
+                  className="text-cyan-400 hover:text-cyan-300 underline"
+                  onClick={() => setLoginMethod(loginMethod === "password" ? "emailCode" : "password")}
+                >
+                  切换
+                </button>
+              </div>
               <Link href="/auth/forgot-password" className="text-sm text-cyan-400 hover:text-cyan-300 hover:underline">
                 忘记密码？
               </Link>
@@ -395,7 +463,7 @@ export default function LoginForm() {
                   登录中...
                 </>
               ) : (
-                "登录"
+                loginMethod === "password" ? "密码登录" : "验证码登录"
               )}
             </Button>
             
