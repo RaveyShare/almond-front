@@ -180,7 +180,12 @@ export default function HomePage() {
             </div>
             
             <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-6 text-sm text-white/60">
-              <span>© 2024 小杏仁. 保留所有权利.</span>
+              <div className="flex flex-col md:flex-row items-center space-y-1 md:space-y-0 md:space-x-4">
+                <span>© 2026 小杏仁. 保留所有权利</span>
+                <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400">
+                  浙ICP备2024091992号-3
+                </a>
+              </div>
               <div className="flex space-x-4">
                 <a href="/privacy" className="hover:text-cyan-400 transition-colors">隐私政策</a>
                 <a href="/terms" className="hover:text-cyan-400 transition-colors">使用条款</a>

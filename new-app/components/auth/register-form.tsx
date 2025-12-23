@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Key } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import Link from 'next/link';
@@ -17,12 +17,41 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    code: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSendCode = async () => {
+    if (!formData.email) {
+      setErrors(prev => ({ ...prev, email: '请输入邮箱地址' }));
+      return;
+    }
+    
+    setIsSendingCode(true);
+    try {
+      await authManager.sendVerificationCode(formData.email);
+      setCountdown(60);
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (error: any) {
+      setErrors(prev => ({ ...prev, email: error.message || '发送验证码失败' }));
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +66,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
     }
 
     try {
-      await authManager.register(formData.username, formData.email, formData.password);
+      await authManager.register(formData.username, formData.email, formData.password, formData.code);
       onSuccess?.();
     } catch (error: any) {
       setErrors({ general: error.message || '注册失败，请重试' });
@@ -94,6 +123,29 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
             icon={<Mail className="w-4 h-4" />}
             error={errors.email}
             required
+          />
+
+          <Input
+            type="text"
+            label="验证码"
+            placeholder="请输入验证码"
+            value={formData.code}
+            onChange={(e) => handleInputChange('code', e.target.value)}
+            icon={<Key className="w-4 h-4" />}
+            error={errors.code}
+            required
+            suffix={
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm" 
+                className="text-cyan-400 hover:text-cyan-300 hover:bg-white/5 mr-1"
+                disabled={isSendingCode || countdown > 0}
+                onClick={handleSendCode}
+              >
+                {countdown > 0 ? `${countdown}s` : (isSendingCode ? '发送中...' : '发送验证码')}
+              </Button>
+            }
           />
 
           <div className="relative">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Calendar, Settings, LogOut, Edit3, Save, X } from 'lucide-react';
+import { User, Mail, Calendar, Settings, LogOut, Edit3, Save, X, Lock, Camera } from 'lucide-react';
 import { MainLayout } from '../../components/layout/main-layout';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -11,12 +11,13 @@ import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState(authManager.getUser());
+  const [user, setUser] = useState<ReturnType<typeof authManager.getUser>>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
+    nickname: '',
     email: '',
+    avatarUrl: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -29,8 +30,9 @@ export default function ProfilePage() {
     
     setUser(currentUser);
     setFormData({
-      username: currentUser.username,
+      nickname: currentUser.nickname,
       email: currentUser.email,
+      avatarUrl: currentUser.avatarUrl || '',
     });
 
     // 监听认证状态变化
@@ -41,8 +43,9 @@ export default function ProfilePage() {
       } else {
         setUser(updatedUser);
         setFormData({
-          username: updatedUser.username,
+          nickname: updatedUser.nickname,
           email: updatedUser.email,
+          avatarUrl: updatedUser.avatarUrl || '',
         });
       }
     });
@@ -58,18 +61,70 @@ export default function ProfilePage() {
   const handleEdit = () => {
     setIsEditing(true);
     setFormData({
-      username: user?.username || '',
+      nickname: user?.nickname || '',
       email: user?.email || '',
+      avatarUrl: user?.avatarUrl || '',
     });
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setFormData({
-      username: user?.username || '',
+      nickname: user?.nickname || '',
       email: user?.email || '',
+      avatarUrl: user?.avatarUrl || '',
     });
     setErrors({});
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors({ general: '图片大小不能超过 5MB' });
+      return;
+    }
+
+    const uploadFormData = new FormData();
+    uploadFormData.append('file', file);
+
+    try {
+      setIsLoading(true);
+      // 使用正确的后端接口地址
+      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_CENTER_URL}/front/users/avatar/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authManager.getToken()}`,
+        },
+        body: uploadFormData,
+      });
+
+      if (!response.ok) {
+        throw new Error('上传失败');
+      }
+
+      const res = await response.json();
+      // 适配不同的返回结构：优先取 data，如果 data 为空，尝试从 message 中获取 URL
+      let uploadedUrl = res.data;
+      
+      // 如果 data 为空，且 message 看起来像 URL（包含 http），则尝试清理并使用 message
+      if (!uploadedUrl && res.message && (typeof res.message === 'string') && res.message.includes('http')) {
+        // 去除可能存在的反引号、引号或首尾空格
+        uploadedUrl = res.message.replace(/[`"'\s]/g, '');
+      }
+
+      if (!uploadedUrl) {
+        throw new Error('未获取到头像地址');
+      }
+
+      setFormData(prev => ({ ...prev, avatarUrl: uploadedUrl }));
+    } catch (error) {
+      console.error(error);
+      setErrors({ general: '头像上传失败，请重试' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -77,8 +132,9 @@ export default function ProfilePage() {
     setErrors({});
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_CENTER_URL}/api/users/profile`, {
-        method: 'PUT',
+      // 切换到新的用户信息更新接口 /front/users/update
+      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_CENTER_URL}/front/users/update`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authManager.getToken()}`,
@@ -86,21 +142,33 @@ export default function ProfilePage() {
         body: JSON.stringify(formData),
       });
 
+      const res = await response.json();
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || '更新失败');
+        throw new Error(res.message || '更新失败');
       }
 
-      const updatedUser = await response.json();
-      // 更新本地存储的用户信息
-      const authResponse = {
-        token: authManager.getToken()!,
-        refreshToken: localStorage.getItem('almond_refresh_token') || '',
-        user: updatedUser,
-      };
-      authManager.saveToStorage(authResponse);
+      // 检查业务状态码
+      if (res.code !== 0 && res.code !== 200) {
+        throw new Error(res.message || '更新失败');
+      }
+
+      let updatedUser = res.data;
+
+      // 处理后端返回数据格式不一致的问题
+      // 1. 如果后端返回的是 avatar 而不是 avatarUrl，进行映射
+      if (updatedUser.avatar && !updatedUser.avatarUrl) {
+        updatedUser.avatarUrl = updatedUser.avatar;
+      }
       
-      setUser(updatedUser);
+      // 2. 清理 avatarUrl 中的异常字符（如反引号、空格）
+      if (updatedUser.avatarUrl && typeof updatedUser.avatarUrl === 'string') {
+        updatedUser.avatarUrl = updatedUser.avatarUrl.replace(/[`"'\s]/g, '');
+      }
+      
+      // 更新本地存储的用户信息和状态
+      authManager.updateUser(updatedUser);
+      
       setIsEditing(false);
     } catch (error: any) {
       setErrors({ general: error.message || '更新失败，请重试' });
@@ -128,7 +196,7 @@ export default function ProfilePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10"
+            className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 relative"
           >
             <div className="flex items-center justify-between mb-8">
               <h1 className="text-3xl font-bold text-white">个人中心</h1>
@@ -154,14 +222,52 @@ export default function ProfilePage() {
                     </Button>
                   </>
                 ) : (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleEdit}
-                  >
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    编辑
-                  </Button>
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleEdit}
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      编辑
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-2 text-white/40 hover:text-white"
+                      onClick={() => router.push('/')}
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* 头像区域 */}
+            <div className="flex justify-center mb-8">
+              <div className="relative group">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-white/10 border-2 border-white/20">
+                  {formData.avatarUrl ? (
+                    <img src={formData.avatarUrl} alt={formData.nickname} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-cyan-400/20 to-violet-500/20">
+                      <User className="w-12 h-12 text-white/40" />
+                    </div>
+                  )}
+                </div>
+                
+                {isEditing && (
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
+                    <Camera className="w-8 h-8 text-white" />
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      disabled={isLoading}
+                    />
+                  </label>
                 )}
               </div>
             </div>
@@ -182,18 +288,18 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-white/60 mb-2">
-                      用户名
+                      昵称
                     </label>
                     {isEditing ? (
                       <Input
                         type="text"
-                        value={formData.username}
-                        onChange={(e) => handleInputChange('username', e.target.value)}
-                        placeholder="请输入用户名"
+                        value={formData.nickname}
+                        onChange={(e) => handleInputChange('nickname', e.target.value)}
+                        placeholder="请输入昵称"
                         error={errors.username}
                       />
                     ) : (
-                      <div className="text-white">{user.username}</div>
+                      <div className="text-white">{user.nickname}</div>
                     )}
                   </div>
 
@@ -217,15 +323,17 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-white/60 mb-2">
-                      注册时间
-                    </label>
-                    <div className="text-white flex items-center">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {new Date(user.createdAt).toLocaleDateString('zh-CN')}
+                  {user.createdAt && (
+                    <div>
+                      <label className="block text-sm font-medium text-white/60 mb-2">
+                        注册时间
+                      </label>
+                      <div className="text-white flex items-center">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {new Date(user.createdAt).toLocaleDateString('zh-CN')}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

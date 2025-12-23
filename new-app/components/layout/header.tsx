@@ -1,17 +1,40 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Brain, User, Menu, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Brain, User as UserIcon, Menu, X, LogOut, LogIn } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
+import { authManager } from '../../lib/auth';
+import { User } from '../../types';
 
 interface HeaderProps {
   className?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({ className = '' }) => {
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // 初始化用户状态
+    setUser(authManager.getUser());
+
+    // 监听认证状态变化
+    const unsubscribe = authManager.addListener(() => {
+      setUser(authManager.getUser());
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = () => {
+    authManager.logout();
+    router.push('/');
+    setIsMenuOpen(false);
+  };
 
   const navItems = [
     { href: '/', label: '首页' },
@@ -52,12 +75,41 @@ export const Header: React.FC<HeaderProps> = ({ className = '' }) => {
 
           {/* 用户菜单 */}
           <div className="flex items-center space-x-4">
-            <Link href="/profile">
-              <Button variant="ghost" size="sm" className="hidden md:flex">
-                <User className="w-4 h-4" />
-                <span>个人中心</span>
-              </Button>
-            </Link>
+            {user ? (
+              <div className="hidden md:flex items-center space-x-4">
+                <Link href="/profile">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.nickname} className="w-6 h-6 rounded-full" />
+                    ) : (
+                      <UserIcon className="w-4 h-4" />
+                    )}
+                    <span>{user.nickname || '个人中心'}</span>
+                  </Button>
+                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleLogout}
+                  className="text-white/60 hover:text-red-400"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="hidden md:flex items-center space-x-2">
+                <Link href="/auth/login">
+                  <Button variant="ghost" size="sm">
+                    登录
+                  </Button>
+                </Link>
+                <Link href="/auth/register">
+                  <Button variant="primary" size="sm">
+                    注册
+                  </Button>
+                </Link>
+              </div>
+            )}
             
             {/* 移动端菜单按钮 */}
             <button
@@ -83,12 +135,40 @@ export const Header: React.FC<HeaderProps> = ({ className = '' }) => {
                   {item.label}
                 </Link>
               ))}
-              <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
-                <Button variant="ghost" size="sm" className="w-full justify-start">
-                  <User className="w-4 h-4 mr-2" />
-                  个人中心
-                </Button>
-              </Link>
+              
+              {user ? (
+                <>
+                  <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start">
+                      <UserIcon className="w-4 h-4 mr-2" />
+                      {user.nickname || '个人中心'}
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    退出登录
+                  </Button>
+                </>
+              ) : (
+                <div className="flex flex-col space-y-2 pt-2">
+                  <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="ghost" size="sm" className="w-full">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      登录
+                    </Button>
+                  </Link>
+                  <Link href="/auth/register" onClick={() => setIsMenuOpen(false)}>
+                    <Button variant="primary" size="sm" className="w-full">
+                      立即注册
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </nav>
           </div>
         )}

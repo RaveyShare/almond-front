@@ -1,11 +1,11 @@
 // 用户类型
 export interface User {
-  id: string;
-  username: string;
+  id: number;
+  nickname: string;
   email: string;
-  avatar?: string;
-  createdAt: string;
-  updatedAt: string;
+  avatarUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // 杏仁项目类型
@@ -59,9 +59,10 @@ export interface RegisterData {
 }
 
 export interface AuthResponse {
-  user: User;
+  userInfo: User;
   token: string;
-  refreshToken: string;
+  expiresIn?: number;
+  refreshToken?: string;
 }
 
 // 微信登录类型
