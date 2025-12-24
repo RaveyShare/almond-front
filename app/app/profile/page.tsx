@@ -91,8 +91,8 @@ export default function ProfilePage() {
 
     try {
       setIsLoading(true);
-      // 使用正确的后端接口地址
-      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_CENTER_URL}/front/users/avatar/upload`, {
+      // 使用统一的 /api/user-center 代理
+      const response = await fetch(`/api/user-center/front/users/avatar/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authManager.getToken()}`,
@@ -132,8 +132,8 @@ export default function ProfilePage() {
     setErrors({});
 
     try {
-      // 切换到新的用户信息更新接口 /front/users/update
-      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_CENTER_URL}/front/users/update`, {
+      // 使用统一的 /api/user-center 代理
+      const response = await fetch(`/api/user-center/front/users/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

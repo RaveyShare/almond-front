@@ -45,7 +45,7 @@ export default function ChangePasswordPage() {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_CENTER_URL}/front/auth/change-password`, {
+      const response = await fetch(`/api/user-center/front/auth/change-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

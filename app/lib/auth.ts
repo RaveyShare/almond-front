@@ -32,12 +32,20 @@ class AuthManager {
 
   saveToStorage(response: AuthResponse) {
     if (typeof window === 'undefined') return;
-    
+
+    // 更新内存状态
+    this.token = response.token;
+    this.user = response.userInfo;
+
+    // 保存到 localStorage
     localStorage.setItem(STORAGE_KEYS.TOKEN, response.token);
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.userInfo));
     if (response.refreshToken) {
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
     }
+
+    // 通知所有监听器
+    this.notifyListeners();
   }
 
   private clearStorage() {
@@ -66,13 +74,13 @@ class AuthManager {
 
   updateUser(user: User): void {
     this.user = user;
-    if (this.token) {
-      this.saveToStorage({
-        token: this.token,
-        userInfo: user,
-        refreshToken: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN) || undefined : undefined
-      });
+
+    // 只更新 localStorage，不重复更新内存状态
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
     }
+
+    // 通知监听器
     this.notifyListeners();
   }
 
@@ -94,16 +102,14 @@ class AuthManager {
       const res = await response.json();
       // Handle potential wrapper structure (e.g. { code: 200, data: { ... } })
       const data: AuthResponse = res.data || res;
-      
+
       if (!data.token || !data.userInfo) {
         console.error('Invalid auth response format:', res);
         throw new Error('登录响应格式错误');
       }
 
-      this.token = data.token;
-      this.user = data.userInfo;
+      // saveToStorage 已经包含了更新内存状态和通知监听器的逻辑
       this.saveToStorage(data);
-      this.notifyListeners();
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -159,10 +165,8 @@ class AuthManager {
         throw new Error('注册响应格式错误');
       }
 
-      this.token = data.token;
-      this.user = data.userInfo;
+      // saveToStorage 已经包含了更新内存状态和通知监听器的逻辑
       this.saveToStorage(data);
-      this.notifyListeners();
     } catch (error) {
       console.error('Register error:', error);
       throw error;
@@ -193,10 +197,8 @@ class AuthManager {
         throw new Error('微信登录响应格式错误');
       }
 
-      this.token = data.token;
-      this.user = data.userInfo;
+      // saveToStorage 已经包含了更新内存状态和通知监听器的逻辑
       this.saveToStorage(data);
-      this.notifyListeners();
     } catch (error) {
       console.error('WeChat login error:', error);
       throw error;
