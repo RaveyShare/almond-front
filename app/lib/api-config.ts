@@ -1,6 +1,4 @@
-/**
- * API Configuration for QR Code Login
- */
+import { authManager } from './auth'
 
 // 创建带超时的fetch函数
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
@@ -87,4 +85,93 @@ export const qrApi = {
     if (res.code !== 0 && res.code !== 200) throw new Error('查询二维码状态失败')
     return res.data
   },
+};
+
+export const authApi = {
+  // 发送重置密码验证码
+  sendResetCode: async (email: string): Promise<void> => {
+    const response = await fetchWithTimeout(`/api/user-center/front/auth/email/sendCode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, scene: 3 }),
+    })
+    const res = await handleResponse<{ code: number; message?: string }>(response)
+    if (res.code !== 0 && res.code !== 200) {
+        throw new Error(res.message || '发送验证码失败')
+    }
+  },
+
+  // 重置密码
+  resetPassword: async (email: string, newPassword: string, code: string): Promise<void> => {
+    const response = await fetchWithTimeout(`/api/user-center/front/auth/email/resetPassword`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, newPassword, code }),
+    })
+    const res = await handleResponse<{ code: number; message?: string }>(response)
+    if (res.code !== 0 && res.code !== 200) {
+        throw new Error(res.message || '重置密码失败')
+    }
+  }
+};
+
+export const api = {
+  qr: qrApi,
+  auth: authApi,
+  almonds: {
+    list: async (params?: { status?: string; pageNo?: number; pageSize?: number }): Promise<{ total: number; pageNo: number; pageSize: number; pages: number; data: import('../types').Almond[] }> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error('未登录')
+      const query = new URLSearchParams()
+      if (params?.status) query.set('status', params.status)
+      query.set('pageNo', String(params?.pageNo ?? 1))
+      query.set('pageSize', String(params?.pageSize ?? 10))
+      const response = await fetchWithTimeout(`/api/almond-back/almonds?${query.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }, 15000)
+      const res = await handleResponse<{ code: number; data: import('../types').PageResp<import('../types').Almond> }>(response)
+      if (res.code !== 0 && res.code !== 200) throw new Error('查询失败')
+      return res.data
+    },
+    create: async (payload: { title: string; description?: string; level?: string; startDate?: string; endDate?: string; priority?: number; tags?: string[] }): Promise<number> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error('未登录')
+      const body = {
+        title: payload.title,
+        description: payload.description || payload.title,
+        level: payload.level || 'inbox',
+        startDate: payload.startDate || '',
+        endDate: payload.endDate || '',
+        priority: typeof payload.priority === 'number' ? payload.priority : 0,
+        tags: JSON.stringify(payload.tags || [])
+      }
+      const response = await fetchWithTimeout(`/api/almond-back/almonds`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      }, 10000)
+      const res = await handleResponse<{ code: number; data: number }>(response)
+      if (res.code !== 0 && res.code !== 200) throw new Error('创建失败')
+      return res.data
+    },
+    get: async (id: number): Promise<import('../types').Almond> => {
+      const token = authManager.getToken()
+      if (!token) throw new Error('未登录')
+      const response = await fetchWithTimeout(`/api/almond-back/almonds/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }, 10000)
+      const res = await handleResponse<{ code: number; data: import('../types').Almond }>(response)
+      if (res.code !== 0 && res.code !== 200) throw new Error('查询失败')
+      return res.data
+    }
+  }
 };

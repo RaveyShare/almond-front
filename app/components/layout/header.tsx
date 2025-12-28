@@ -39,8 +39,8 @@ export const Header: React.FC<HeaderProps> = ({ className = '' }) => {
   const navItems = [
     { href: '/', label: '首页' },
     { href: '/memory-library', label: '杏仁库' },
-    { href: '/reviews', label: '复习' },
-    { href: '/plans', label: '计划' },
+    { href: '/xingren_interaction', label: '转化' },
+    { href: '/reviews', label: '回顾' },
   ];
 
   return (

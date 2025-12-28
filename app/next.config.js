@@ -16,6 +16,10 @@ const nextConfig = {
         source: '/api/user-center/:path*',
         destination: 'https://user-center.ravey.site/:path*',
       },
+      {
+        source: '/api/almond-back/:path*',
+        destination: 'http://localhost:8082/:path*',
+      },
     ];
   },
   async redirects() {

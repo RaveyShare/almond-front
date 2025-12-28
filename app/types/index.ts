@@ -86,3 +86,35 @@ export interface ComponentProps {
 export interface LayoutProps extends ComponentProps {
   showBackground?: boolean;
 }
+
+export interface Almond {
+  id: number;
+  userId: number;
+  title: string;
+  description?: string;
+  almondStatus?: string;
+  aiClassification?: string;
+  classificationConfidence?: number;
+  evolutionStage?: number;
+  aiAnalysisCount?: number;
+  userFeedback?: string;
+  taskType?: string;
+  level?: string;
+  status?: string;
+  priority?: number;
+  tags?: string[];
+  startDate?: string;
+  endDate?: string;
+  actualStart?: string;
+  actualEnd?: string;
+  createdTime?: string;
+  updatedTime?: string;
+}
+
+export interface PageResp<T> {
+  pageNo: number;
+  pageSize: number;
+  total: number;
+  pages: number;
+  data: T[];
+}

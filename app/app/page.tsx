@@ -3,11 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Send, Loader2, Calendar, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 import { MainLayout } from '../components/layout/main-layout';
 import { Header } from '../components/layout/header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { cn } from '../lib/utils';
+import { api } from '../lib/api-config';
+import { authManager } from '../lib/auth';
+import type { Almond } from '../types';
 
 const PLACEHOLDERS = [
   "「刚想到的一件事」",
@@ -20,7 +24,10 @@ export default function HomePage() {
   const [inputValue, setInputValue] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // 暂时设为true用于演示
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [items, setItems] = useState<Almond[]>([]);
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
 
   // 轮播placeholder
   useEffect(() => {
@@ -29,18 +36,56 @@ export default function HomePage() {
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+  
+  useEffect(() => {
+    setIsAuthenticated(!!authManager.getToken());
+    const unsub = authManager.addListener(() => {
+      setIsAuthenticated(!!authManager.getToken());
+    });
+    return () => unsub();
+  }, []);
+  
+  const loadList = async () => {
+    if (!authManager.getToken()) return;
+    setListLoading(true);
+    setListError(null);
+    try {
+      const res = await api.almonds.list({ pageNo: 1, pageSize: 5 });
+      setItems(res.data || []);
+    } catch (e: any) {
+      setListError(e?.message || '加载失败');
+    } finally {
+      setListLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadList();
+    } else {
+      setItems([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
 
     setIsLoading(true);
-    // 这里添加保存逻辑
-    
-    setTimeout(() => {
+    try {
+      await api.almonds.create({
+        title: inputValue.trim(),
+        description: inputValue.trim(),
+        level: 'inbox',
+        priority: 0,
+        tags: []
+      });
       setInputValue('');
-      setIsLoading(false);
-    }, 1000);
+      await loadList();
+    } catch (err) {
+    }
+    setIsLoading(false);
   };
 
   return (
@@ -131,6 +176,44 @@ export default function HomePage() {
               <p className="mt-3 text-center text-sm text-white/50">
                 请先<a href="/auth/login" className="text-cyan-400 hover:text-cyan-300 underline">登录</a>后使用
               </p>
+            )}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            className="max-w-2xl mx-auto"
+          >
+            {listLoading && (
+              <p className="text-white/70">列表加载中...</p>
+            )}
+            {listError && (
+              <p className="text-red-400">{listError}</p>
+            )}
+            {items.length > 0 && !listLoading && !listError && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-lg font-semibold text-white/80">可以展开的想法</h2>
+                  <div className="text-sm text-white/50">{items.length} 颗</div>
+                </div>
+                {items.map((item) => (
+                  <Link key={item.id} href={`/almonds/${item.id}`} className="block group">
+                    <div className="bg-white/5 group-hover:bg-white/10 rounded-2xl border border-white/10 p-5 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold">{item.title}</h3>
+                        <span className="text-xs text-white/60">{item.status || 'new'}</span>
+                      </div>
+                      <p className="text-sm text-white/80 line-clamp-2">{item.description || ''}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            {items.length === 0 && !listLoading && !listError && (
+              <div className="text-center py-8">
+                <p className="text-white/60 text-sm">还没有杏仁，先在上面的输入框创建吧</p>
+              </div>
             )}
           </motion.div>
 

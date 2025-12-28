@@ -112,7 +112,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onWechatLogin }) => {
             const userInfo = {
               id: typeof res.userInfo?.id === 'number' ? res.userInfo.id : Number(res.userInfo?.id) || 0,
               nickname: res.userInfo?.nickname || '用户',
-              email: res.userInfo?.email || '',
+              email: (res.userInfo as any)?.email || '',
               avatarUrl: res.userInfo?.avatarUrl,
               createdAt: new Date().toISOString(),
             };
