@@ -44,10 +44,8 @@ export default function XingRenApp() {
       tags: ['Rust', '系统编程'],
       startDate: '',
       endDate: '',
-      actualStart: '',
-      actualEnd: '',
-      createdTime: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-      updatedTime: new Date().toISOString(),
+      createTime: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+      updateTime: new Date().toISOString(),
       almondType: 'memory',
       aiSuggestion: '这颗杏仁看起来像是一个【记忆】，要不要让我帮你照看？'
     },
@@ -69,10 +67,8 @@ export default function XingRenApp() {
       tags: ['设计', '原型'],
       startDate: '',
       endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-      actualStart: '',
-      actualEnd: '',
-      createdTime: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      updatedTime: new Date().toISOString(),
+      createTime: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      updateTime: new Date().toISOString(),
       almondType: 'action',
       aiSuggestion: '建议拆分为「线框图」「关键交互」「评审安排」三步'
     },
@@ -94,10 +90,8 @@ export default function XingRenApp() {
       tags: ['团队', '效率'],
       startDate: '',
       endDate: '',
-      actualStart: '',
-      actualEnd: '',
-      createdTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      updatedTime: new Date().toISOString(),
+      createTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      updateTime: new Date().toISOString(),
       almondType: 'goal',
       aiSuggestion: '该目标可设置阶段性里程碑，当前进度 40%',
       progressPercent: 40
@@ -128,7 +122,7 @@ export default function XingRenApp() {
         {!loading && !error && (
           <div className="space-y-4">
             {items.map((item) => (
-              <Link key={item.id} href={`/almonds/${item.id}`} className="block group">
+              <div key={item.id} className="block group cursor-default">
                 <div className="bg-slate-800/40 group-hover:bg-slate-800/60 rounded-2xl border border-white/10 p-5 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
@@ -139,7 +133,7 @@ export default function XingRenApp() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-xs text-white/60">{item.status || 'new'}</span>
-                      <span className="text-xs text-white/50">{toRelative(item.createdTime)}</span>
+                      <span className="text-xs text-white/50">{toRelative(item.createTime)}</span>
                     </div>
                   </div>
                   <p className="text-sm text-white/80 line-clamp-2">{item.description || ''}</p>
@@ -167,7 +161,7 @@ export default function XingRenApp() {
                     </div>
                   )}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}

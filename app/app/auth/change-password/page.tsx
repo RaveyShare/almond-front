@@ -7,6 +7,7 @@ import { MainLayout } from '../../../components/layout/main-layout';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { authManager } from '../../../lib/auth';
+import { apiClient } from '../../../lib/api-config';
 import { useRouter } from 'next/navigation';
 
 export default function ChangePasswordPage() {
@@ -45,22 +46,13 @@ export default function ChangePasswordPage() {
     }
 
     try {
-      const response = await fetch(`/api/user-center/front/auth/change-password`, {
+      await apiClient.fetch(`/api/user-center/front/auth/change-password`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authManager.getToken()}`,
-        },
         body: JSON.stringify({
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword,
         }),
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || '密码修改失败');
-      }
 
       setSuccess(true);
       setTimeout(() => {

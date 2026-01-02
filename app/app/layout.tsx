@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './styles/globals.css'
 import { AuthGuard } from '../components/auth/auth-guard'
 import Header from '../components/layout/header'
+import { NotificationProvider } from '../contexts/notification-context'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,8 +31,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
-        <Header />
-        {children}
+        <NotificationProvider>
+          <Header />
+          {children}
+        </NotificationProvider>
       </body>
     </html>
   )

@@ -23,12 +23,42 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
 
 // Helper to handle API responses
 async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    authManager.logout();
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth/login')) {
+      window.location.href = '/auth/login';
+    }
+    throw new Error('登录已过期，请重新登录');
+  }
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}))
     throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
   }
   return response.json()
 }
+
+export const apiClient = {
+  fetch: async <T>(url: string, options: RequestInit = {}, timeout = 10000): Promise<T> => {
+    const token = authManager.getToken();
+    const headers = {
+      ...(options.headers || {}),
+    } as Record<string, string>;
+
+    // 只有当 body 不是 FormData 时才默认添加 Content-Type: application/json
+    if (!headers['Content-Type'] && 
+        !(typeof FormData !== 'undefined' && options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetchWithTimeout(url, { ...options, headers }, timeout);
+    return handleResponse<T>(response);
+  }
+};
 
 // API request functions for QR code login
 // 统一使用 /api/user-center 前缀，与其他API保持一致
@@ -137,19 +167,13 @@ export const api = {
       if (res.code !== 0 && res.code !== 200) throw new Error('查询失败')
       return res.data
     },
-    create: async (payload: { title: string; description?: string; level?: string; startDate?: string; endDate?: string; priority?: number; tags?: string[] }): Promise<number> => {
+    create: async (payload: { content: string }): Promise<import('../types').CreateAlmondResponse> => {
       const token = authManager.getToken()
       if (!token) throw new Error('未登录')
       const body = {
-        title: payload.title,
-        description: payload.description || payload.title,
-        level: payload.level || 'inbox',
-        startDate: payload.startDate || '',
-        endDate: payload.endDate || '',
-        priority: typeof payload.priority === 'number' ? payload.priority : 0,
-        tags: JSON.stringify(payload.tags || [])
+        content: payload.content
       }
-      const response = await fetchWithTimeout(`/api/almond-back/almonds`, {
+      const response = await fetchWithTimeout(`/api/almond-back/front/almonds/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,14 +181,14 @@ export const api = {
         },
         body: JSON.stringify(body)
       }, 10000)
-      const res = await handleResponse<{ code: number; data: number }>(response)
+      const res = await handleResponse<{ code: number; data: import('../types').CreateAlmondResponse }>(response)
       if (res.code !== 0 && res.code !== 200) throw new Error('创建失败')
       return res.data
     },
     get: async (id: number): Promise<import('../types').Almond> => {
       const token = authManager.getToken()
       if (!token) throw new Error('未登录')
-      const response = await fetchWithTimeout(`/api/almond-back/almonds/${id}`, {
+      const response = await fetchWithTimeout(`/api/almond-back/front/almonds/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

@@ -92,19 +92,11 @@ export default function ProfilePage() {
     try {
       setIsLoading(true);
       // 使用统一的 /api/user-center 代理
-      const response = await fetch(`/api/user-center/front/users/avatar/upload`, {
+      const res = await apiClient.fetch<any>(`/api/user-center/front/users/avatar/upload`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authManager.getToken()}`,
-        },
         body: uploadFormData,
       });
 
-      if (!response.ok) {
-        throw new Error('上传失败');
-      }
-
-      const res = await response.json();
       // 适配不同的返回结构：优先取 data，如果 data 为空，尝试从 message 中获取 URL
       let uploadedUrl = res.data;
       

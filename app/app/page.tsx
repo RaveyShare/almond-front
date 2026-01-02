@@ -1,17 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Send, Loader2, Calendar, ArrowRight } from 'lucide-react';
+import { Brain, Send, Loader2, Calendar, ArrowRight, ListTodo, Target, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { MainLayout } from '../components/layout/main-layout';
-import { Header } from '../components/layout/header';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { cn } from '../lib/utils';
 import { api } from '../lib/api-config';
 import { authManager } from '../lib/auth';
-import type { Almond } from '../types';
+import { Almond } from '../types';
+import { useNotification } from '../contexts/notification-context';
 
 const PLACEHOLDERS = [
   "「刚想到的一件事」",
@@ -21,14 +20,13 @@ const PLACEHOLDERS = [
 ];
 
 export default function HomePage() {
+  const { addPendingId } = useNotification();
   const [inputValue, setInputValue] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [items, setItems] = useState<Almond[]>([]);
-  const [listLoading, setListLoading] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
+  
   // 轮播placeholder
   useEffect(() => {
     const interval = setInterval(() => {
@@ -45,52 +43,37 @@ export default function HomePage() {
     return () => unsub();
   }, []);
   
-  const loadList = async () => {
-    if (!authManager.getToken()) return;
-    setListLoading(true);
-    setListError(null);
-    try {
-      const res = await api.almonds.list({ pageNo: 1, pageSize: 5 });
-      setItems(res.data || []);
-    } catch (e: any) {
-      setListError(e?.message || '加载失败');
-    } finally {
-      setListLoading(false);
-    }
-  };
-  
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadList();
-    } else {
-      setItems([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isSubmitting) return;
 
-    setIsLoading(true);
+    const content = inputValue.trim();
+    setInputValue('');
+    setIsSubmitting(true); // Short loading state for button feedback
+    
     try {
-      await api.almonds.create({
-        title: inputValue.trim(),
-        description: inputValue.trim(),
-        level: 'inbox',
-        priority: 0,
-        tags: []
+      // Optimistic UI update
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 2000);
+      setIsSubmitting(false);
+
+      const response = await api.almonds.create({
+        content: content
       });
-      setInputValue('');
-      await loadList();
+      
+      // Add to polling queue
+      addPendingId(response.id);
+      
     } catch (err) {
+      console.error(err);
+      setIsSubmitting(false);
+      setInputValue(content); // Restore on error
+      // TODO: Show error toast
     }
-    setIsLoading(false);
   };
 
   return (
     <MainLayout>
-      {/* 主要内容 */}
       <main className="min-h-screen flex items-center justify-center px-4 pt-20 pb-8">
         <div className="w-full max-w-4xl mx-auto">
           {/* Hero 区域 */}
@@ -114,11 +97,12 @@ export default function HomePage() {
             </h1>
             
             <p className="text-xl md:text-2xl text-white/80 mb-2">
-              👋 欢迎来到小杏仁，这里不是任务清单，也不是笔记本
+              想到什么，先放下一颗杏仁。
             </p>
             
             <p className="text-lg text-white/60">
-              想到什么，先放一颗杏仁
+              不需要想清楚，<br />
+              小杏仁会慢慢帮你理清。
             </p>
           </motion.div>
 
@@ -127,7 +111,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="max-w-2xl mx-auto mb-12"
+            className="max-w-2xl mx-auto mb-8"
           >
             <form onSubmit={handleSubmit} className="relative">
               <div className="relative">
@@ -137,7 +121,7 @@ export default function HomePage() {
                   onChange={(e) => setInputValue(e.target.value)}
                   className="pr-24 text-lg py-4"
                   placeholder=""
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                 />
                 
                 {/* 动态Placeholder */}
@@ -162,15 +146,31 @@ export default function HomePage() {
               <Button
                 type="submit"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-12 w-12"
-                disabled={isLoading || !isAuthenticated}
+                disabled={isSubmitting || !isAuthenticated}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <Send className="w-5 h-5" />
                 )}
               </Button>
             </form>
+            
+            <div className="h-6 mt-2 flex justify-center items-center">
+                <AnimatePresence>
+                    {showSaved && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center text-green-400 text-sm space-x-1"
+                        >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>已放下</span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
             
             {!isAuthenticated && (
               <p className="mt-3 text-center text-sm text-white/50">
@@ -179,50 +179,12 @@ export default function HomePage() {
             )}
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="max-w-2xl mx-auto"
-          >
-            {listLoading && (
-              <p className="text-white/70">列表加载中...</p>
-            )}
-            {listError && (
-              <p className="text-red-400">{listError}</p>
-            )}
-            {items.length > 0 && !listLoading && !listError && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-lg font-semibold text-white/80">可以展开的想法</h2>
-                  <div className="text-sm text-white/50">{items.length} 颗</div>
-                </div>
-                {items.map((item) => (
-                  <Link key={item.id} href={`/almonds/${item.id}`} className="block group">
-                    <div className="bg-white/5 group-hover:bg-white/10 rounded-2xl border border-white/10 p-5 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">{item.title}</h3>
-                        <span className="text-xs text-white/60">{item.status || 'new'}</span>
-                      </div>
-                      <p className="text-sm text-white/80 line-clamp-2">{item.description || ''}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-            {items.length === 0 && !listLoading && !listError && (
-              <div className="text-center py-8">
-                <p className="text-white/60 text-sm">还没有杏仁，先在上面的输入框创建吧</p>
-              </div>
-            )}
-          </motion.div>
-
-          {/* 功能介绍 */}
+          {/* 功能介绍 (保持不变) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto"
+            className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto mt-12"
           >
             <div className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
               <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl mx-auto mb-4 flex items-center justify-center">

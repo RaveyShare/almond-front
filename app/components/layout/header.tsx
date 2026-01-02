@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Brain, User as UserIcon, Menu, X, LogOut, LogIn } from 'lucide-react';
+import { Brain, User as UserIcon, Menu, X, LogOut, LogIn, Bell } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { authManager } from '../../lib/auth';
 import { User } from '../../types';
+import { useNotification } from '../../contexts/notification-context';
 
 interface HeaderProps {
   className?: string;
@@ -15,12 +16,15 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ className = '' }) => {
   const router = useRouter();
+  const { confirmationList, openModal } = useNotification();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     // 初始化用户状态
     setUser(authManager.getUser());
+    // Mock notification count
+    // setNotificationCount(1);
 
     // 监听认证状态变化
     const unsubscribe = authManager.addListener(() => {
@@ -75,6 +79,15 @@ export const Header: React.FC<HeaderProps> = ({ className = '' }) => {
 
           {/* 用户菜单 */}
           <div className="flex items-center space-x-4">
+            {user && (
+              <Button variant="ghost" size="sm" className="relative p-2 mr-1" onClick={openModal}>
+                <Bell className="w-5 h-5 text-white/80" />
+                {confirmationList.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-black/80"></span>
+                )}
+              </Button>
+            )}
+
             {user ? (
               <div className="hidden md:flex items-center space-x-4">
                 <Link href="/profile">

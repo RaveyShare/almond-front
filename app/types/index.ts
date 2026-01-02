@@ -92,12 +92,15 @@ export interface Almond {
   userId: number;
   title: string;
   description?: string;
+  content?: string;
   almondStatus?: string;
   aiClassification?: string;
   classificationConfidence?: number;
   evolutionStage?: number;
   aiAnalysisCount?: number;
   userFeedback?: string;
+  clarifiedContent?: string;
+  needConfirm?: boolean;
   taskType?: string;
   level?: string;
   status?: string;
@@ -105,10 +108,8 @@ export interface Almond {
   tags?: string[];
   startDate?: string;
   endDate?: string;
-  actualStart?: string;
-  actualEnd?: string;
-  createdTime?: string;
-  updatedTime?: string;
+  createTime?: string;
+  updateTime?: string;
 }
 
 export interface PageResp<T> {
@@ -117,4 +118,12 @@ export interface PageResp<T> {
   total: number;
   pages: number;
   data: T[];
+}
+
+export interface CreateAlmondResponse {
+  id: number;
+  status: string;
+  suggestedType?: string;
+  confidence?: number;
+  reasoning?: string;
 }
