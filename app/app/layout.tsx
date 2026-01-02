@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: '小杏仁 - AI成长伙伴',
   description: '小杏仁是你的AI成长伙伴，帮助你记录想法、管理记忆、制定计划',
   keywords: 'AI, 记忆管理, 学习计划, 个人成长',
-  authors: [{ name: '小杏仁团队' }],
+  authors: [{ name: '任伟-Ravey' }],
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',

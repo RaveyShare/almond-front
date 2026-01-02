@@ -23,8 +23,6 @@ export const Header: React.FC<HeaderProps> = ({ className = '' }) => {
   useEffect(() => {
     // 初始化用户状态
     setUser(authManager.getUser());
-    // Mock notification count
-    // setNotificationCount(1);
 
     // 监听认证状态变化
     const unsubscribe = authManager.addListener(() => {

@@ -21,9 +21,13 @@ export default function TermsPage() {
       {/* Header */}
       <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between px-4">
-          <Link className="flex items-center space-x-2 font-bold" href="/">
-            <Brain className="h-6 w-6 text-cyan-400" />
-            <span>小杏仁</span>
+          <Link href="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-violet-500 rounded-lg flex items-center justify-center">
+              <Brain className="w-5 h-5 text-black" />
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-violet-500 bg-clip-text text-transparent">
+              小杏仁
+            </span>
           </Link>
           <Link 
             href="/" 
@@ -47,7 +51,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-xl font-semibold mb-4 text-cyan-400">第一条 总则</h2>
                 <div className="space-y-3 text-white/90">
-                  <p>1.1 本协议是您与小杏仁（almond）服务提供者之间关于您使用小杏仁（almond）服务所订立的协议。本协议描述服务提供者与用户之间关于软件许可和服务使用相关方面的权利义务。"用户"是指使用小杏仁相关服务的使用人。</p>
+                  <p>1.1 本协议是您与小杏仁（almond）服务提供者之间关于您使用小杏仁（almond）服务所订立的协议。本协议描述服务提供者与用户之间关于软件许可和服务使用相关方面的权利义务。“用户”是指使用小杏仁相关服务的使用人。</p>
                   <p>1.2 您应当在使用小杏仁服务之前认真阅读全部协议内容。如您不同意本服务协议的任意内容，或无法准确理解该条款，请不要进行后续操作。</p>
                   <p>1.3 您的使用行为或您以书面方式明示同意本协议，视为您已充分阅读、理解并接受本协议的全部内容，并与服务提供者达成一致，成为我们的用户。</p>
                 </div>

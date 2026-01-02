@@ -21,9 +21,13 @@ export default function PrivacyPage() {
       {/* Header */}
       <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between px-4">
-          <Link className="flex items-center space-x-2 font-bold" href="/">
-            <Brain className="h-6 w-6 text-cyan-400" />
-            <span>小杏仁</span>
+          <Link href="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-violet-500 rounded-lg flex items-center justify-center">
+              <Brain className="w-5 h-5 text-black" />
+            </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-violet-500 bg-clip-text text-transparent">
+              小杏仁
+            </span>
           </Link>
           <Link 
             href="/" 

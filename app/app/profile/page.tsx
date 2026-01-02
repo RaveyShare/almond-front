@@ -7,6 +7,7 @@ import { MainLayout } from '../../components/layout/main-layout';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { authManager } from '../../lib/auth';
+import { apiClient } from '../../lib/api-config';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {

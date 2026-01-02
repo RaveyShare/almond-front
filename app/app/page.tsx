@@ -156,17 +156,17 @@ export default function HomePage() {
               </Button>
             </form>
             
-            <div className="h-6 mt-2 flex justify-center items-center">
+            <div className="min-h-6 mt-2 flex justify-center items-center">
                 <AnimatePresence>
                     {showSaved && (
                         <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0 }}
-                            className="flex items-center text-green-400 text-sm space-x-1"
+                            className="flex flex-wrap items-center justify-center text-green-400 text-sm gap-x-1"
                         >
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>已放下</span>
+                            <span>已放下一颗小杏仁 🌰</span>
                         </motion.div>
                     )}
                 </AnimatePresence>
